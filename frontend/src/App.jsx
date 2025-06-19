@@ -1,54 +1,25 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Navbar from './Navbar.jsx';
-import Login from './components/Login.jsx';
-import Signup from './components/Signup.jsx';
-import Dashboard from './components/Dashboard.jsx';
-import PrivateRoute from './components/PrivateRoute';
-import Home from './pages/Home.jsx';
-import Profile from "./pages/Profile";
-import Courses from "./pages/Courses.jsx";
+import {  Routes, Route } from 'react-router-dom';
+import Navbar from './Navbar';
+import Home from './pages/Home';
+import Login from './components/Login';
+import Dashboard from './pages/Dashboard';
+import Register from './components/Register';
+import AdminDashboard from './pages/AdminDashboard';
+import InstructorDashboard from './pages/Dashboard2';
 
 function App() {
   return (
-    <BrowserRouter>
+  <>
       <Navbar />
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/home"
-          element={
-            <PrivateRoute>
-              <Home />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/courses"
-          element={
-            <PrivateRoute>
-              <Courses />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+       <Route path="/dashboard" element={<Dashboard />} />
+       <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/dashboard2" element={<InstructorDashboard />} />
       </Routes>
-    </BrowserRouter>
+      </>
   );
 }
 

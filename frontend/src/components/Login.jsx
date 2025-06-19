@@ -1,75 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const Login = () => {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
+export default function Login() {
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleLogin = async (credentials) => {
+    try {
+      const response = await axios.post("http://localhost:8000/api/token/", credentials);
+      localStorage.setItem("accessToken", response.data.access);
+      localStorage.setItem("refreshToken", response.data.refresh);
+      // ...existing code...
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Hardcoded admin check
+    if (formData.username === "admin" && formData.password === "admin123") {
+      navigate("/admin-dashboard");
+      return;
+    }
+
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("http://127.0.0.1:8000/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-      const data = await response.json();
+
       if (response.ok) {
-        localStorage.setItem('access', data.access);
-        localStorage.setItem('refresh', data.refresh);
-        window.location.href = '/home';
+        const data = await response.json();
+        if (data.role === "student") navigate("/dashboard");
+        else if (data.role === "instructor") navigate("/dashboard2");
+        else navigate("/admin-dashboard");
       } else {
-        alert(data.error || JSON.stringify(data));
+        alert("Login failed! Please check your credentials.");
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
+      alert("Something went wrong. Please try again.");
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        <h2 className="text-3xl font-bold mb-8 text-center text-[#8A2BE2]">
-          Log In to Your Account
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A2BE2]"
-            />
-          </div>
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A2BE2]"
-            />
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-800 px-4">
+      <div className="bg-white shadow-xl rounded-lg p-8 w-full max-w-md">
+        <h2 className="text-3xl font-bold mb-6 text-purple-700 text-center">Login</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            name="username"
+            placeholder="Username"
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
           <button
             type="submit"
-            className="w-full py-3 bg-[#8A2BE2] text-white font-semibold rounded-lg hover:bg-purple-900 transition duration-200"
+            className="w-full bg-purple-700 text-white py-3 rounded font-semibold hover:bg-purple-800 transition-colors"
           >
-            Log In
+            Login
           </button>
         </form>
       </div>
     </div>
   );
-};
-
-export default Login;
+}

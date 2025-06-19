@@ -1,13 +1,66 @@
+import React, { useState, useEffect } from 'react';
+import { fetchCourses, createCourse, enrollInCourse } from '../api';
 
-import React from "react";
+function Courses({ userRole }) {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newCourse, setNewCourse] = useState({ title: '', description: '' });
 
-export default function Courses() {
+  useEffect(() => {
+    const loadCourses = async () => {
+      setLoading(true);
+      const data = await fetchCourses();
+      setCourses(data);
+      setLoading(false);
+    };
+    loadCourses();
+  }, []);
+
+  const handleCreateCourse = async () => {
+    const createdCourse = await createCourse(newCourse);
+    setCourses([...courses, createdCourse]);
+  };
+
+  const handleEnroll = async (courseId) => {
+    await enrollInCourse(courseId);
+    alert('Enrolled successfully!');
+  };
+
+  if (loading) return <p>Loading...</p>;
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-20">
-      <h1 className="text-3xl font-bold text-purple-700 mb-4">Courses</h1>
-      <p className="text-gray-700">
-        Here you’ll display your courses list, search, filter, enroll, etc.
-      </p>
+    <div>
+      {userRole === 'teacher' && (
+        <div>
+          <h2>Create a New Course</h2>
+          <input
+            type="text"
+            placeholder="Title"
+            value={newCourse.title}
+            onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+          />
+          <textarea
+            placeholder="Description"
+            value={newCourse.description}
+            onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+          />
+          <button onClick={handleCreateCourse}>Create Course</button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {courses.map((course) => (
+          <div key={course.id} className="bg-white rounded-lg shadow p-4 border">
+            <h3>{course.title}</h3>
+            <p>{course.description}</p>
+            {userRole === 'student' && (
+              <button onClick={() => handleEnroll(course.id)}>Enroll</button>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
+export default Courses;

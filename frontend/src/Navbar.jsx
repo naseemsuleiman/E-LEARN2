@@ -1,55 +1,53 @@
-// src/components/Navbar.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserCircleIcon, BookOpenIcon } from "@heroicons/react/24/outline";
+import { useAuth } from "./context/AuthContext";
 
 export default function Navbar() {
-  const isLoggedIn = !!localStorage.getItem("access_token");
+  const { isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
+    logout();
     navigate("/");
   };
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-purple-700">E-Learn</Link>
-
-        <div className="flex items-center gap-6">
-          <Link to="/" className="text-gray-700 hover:text-purple-700">Home</Link>
-          {isLoggedIn && (
-            <>
-              <Link to="/courses" className="text-gray-700 hover:text-purple-700 flex items-center gap-1">
-                <BookOpenIcon className="w-5 h-5" />
-                Courses
-              </Link>
-              <Link to="/profile" className="text-gray-700 hover:text-purple-700 flex items-center gap-1">
-                <UserCircleIcon className="w-5 h-5" />
-                Profile
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-gray-700 hover:text-purple-700"
-              >
-                Logout
-              </button>
-            </>
-          )}
-          {!isLoggedIn && (
-            <>
-              <Link to="/login" className="text-gray-700 hover:text-purple-700">Login</Link>
-              <Link
-                to="/signup"
-                className="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800 transition"
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
+    <nav className="bg-purple-600">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center">
+            <Link to="/" className="text-white font-bold text-xl">E-Learn</Link>
+          </div>
+          <div className="flex items-center">
+            {isLoggedIn ? (
+              <>
+                <Link to="/dashboard" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Dashboard
+                </Link>
+                <Link to="/profile" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Login
+                </Link>
+                <Link to="/register" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Sign Up
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
   );
-}
+};

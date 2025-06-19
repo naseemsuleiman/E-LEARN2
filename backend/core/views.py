@@ -1,54 +1,77 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth.models import User, Group
-from django.contrib.auth.password_validation import validate_password
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Course, Enrollment
+from django.contrib.auth import login
+from .serializers import CourseSerializer, EnrollmentSerializer, RegisterSerializer, LoginSerializer, UserSerializer
+from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
-class SignupView(APIView):
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
-        print("Request data:", request.data)
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        username = request.data.get('username')
-        email = request.data.get('email')
-        password = request.data.get('password')
-        role = request.data.get('role')
 
-        print(f"username={username}, email={email}, password={password}, role={role}")
+class LoginView(APIView):
+    permission_classes = [AllowAny]
 
-        if not all([username, email, password, role]):
-            return Response({"error": "All fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data
+            login(request, user)
+            return Response({'id': user.id, 'role': user.role}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if User.objects.filter(username=username).exists():
-            return Response({"error": "Username already exists."}, status=status.HTTP_400_BAD_REQUEST)
+class CourseView(APIView):
+    def get(self, request):
+        courses = Course.objects.all()
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data)
 
+    def post(self, request):
+        if request.user.groups.filter(name="Instructor").exists():
+            serializer = CourseSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(instructor=request.user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Only instructors can create courses."}, status=status.HTTP_403_FORBIDDEN)
+
+
+class EnrollmentView(APIView):
+    def post(self, request, course_id):
+        course = Course.objects.get(id=course_id)
+        if Enrollment.objects.filter(student=request.user, course=course).exists():
+            return Response({"error": "Already enrolled."}, status=status.HTTP_400_BAD_REQUEST)
+        Enrollment.objects.create(student=request.user, course=course)
+        return Response({"message": "Enrolled successfully."}, status=status.HTTP_201_CREATED)
+
+    def get(self, request, course_id):
+        enrollment = Enrollment.objects.filter(student=request.user, course_id=course_id).first()
+        if enrollment:
+            serializer = EnrollmentSerializer(enrollment)
+            return Response(serializer.data)
+        return Response({"error": "Not enrolled."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class InstructorDashboardView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
         try:
-            validate_password(password)
+            if request.user.groups.filter(name="Instructor").exists():
+                courses = Course.objects.filter(instructor=request.user)
+                serializer = CourseSerializer(courses, many=True)
+                return Response(serializer.data)
+            return Response({"error": "Only instructors can access this dashboard."}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
-            print("Password validation error:", e)
-            return Response({"error": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = User.objects.create_user(username=username, email=email, password=password)
-
-        group, _ = Group.objects.get_or_create(name=role.capitalize())
-        user.groups.add(group)
-        user.save()
-
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            "message": f"User '{username}' created as '{role}'.",
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
-
-
-class LoginView(TokenObtainPairView):
-    serializer_class = TokenObtainPairSerializer
-    """
-    Uses SimpleJWT's TokenObtainPairView to handle login.
-    POST: username, password -> returns refresh & access tokens.
-    """
-    pass
+            return Response({'error': str(e)}, status=500)
