@@ -1,10 +1,11 @@
+// Navbar.jsx
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserCircleIcon, BookOpenIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "./context/AuthContext";
 
 export default function Navbar() {
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -19,14 +20,16 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link to="/" className="text-white font-bold text-xl">E-Learn</Link>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             {isLoggedIn ? (
               <>
-                <Link to="/dashboard" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                <div className="flex items-center text-white">
+                  <UserCircleIcon className="h-6 w-6 mr-2" />
+                  <span>{user?.username} ({user?.role})</span>
+                </div>
+                <Link to={user?.role === 'student' ? '/dashboard' : user?.role === 'instructor' ? '/dashboard2' : '/admin-dashboard'}
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                   Dashboard
-                </Link>
-                <Link to="/profile" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                  Profile
                 </Link>
                 <button
                   onClick={handleLogout}
@@ -50,4 +53,4 @@ export default function Navbar() {
       </div>
     </nav>
   );
-};
+}

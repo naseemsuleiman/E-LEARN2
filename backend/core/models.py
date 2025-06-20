@@ -19,6 +19,16 @@ class Course(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['instructor']),
+            models.Index(fields=['title']),
+        ]
+
+
+def __str__(self):
+        return f"{self.title} (by {self.instructor.username})"
+
 class Enrollment(models.Model):
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
@@ -32,3 +42,6 @@ class Enrollment(models.Model):
     )
     progress = models.FloatField(default=0.0)
     enrolled_at = models.DateTimeField(auto_now_add=True)
+
+def __str__(self):
+        return f"{self.student.username} in {self.course.title} - {self.progress}%"

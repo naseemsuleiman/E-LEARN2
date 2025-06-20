@@ -1,60 +1,53 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const [formData, setFormData] = useState({ username: "", password: "" });
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleLogin = async (credentials) => {
-    try {
-      const response = await axios.post("http://localhost:8000/api/token/", credentials);
-      localStorage.setItem("accessToken", response.data.access);
-      localStorage.setItem("refreshToken", response.data.refresh);
-      // ...existing code...
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
-  };
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  try {
+    const response = await axios.post("http://127.0.0.1:8000/login/", {
+      username: formData.username,
+      password: formData.password
+    });
 
-    // Hardcoded admin check
-    if (formData.username === "admin" && formData.password === "admin123") {
+    const { access, refresh, username, role } = response.data;
+
+    login(access, refresh, { username, role });
+
+    // Redirect based on role
+    if (role === 'instructor') {
+      navigate("/dashboard2");
+    } else if (role === 'student') {
+      navigate("/dashboard");
+    } else if (role === 'admin') {
       navigate("/admin-dashboard");
-      return;
+    } else {
+      navigate("/"); // fallback
     }
 
-    try {
-      const response = await fetch("http://127.0.0.1:8000/login/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.role === "student") navigate("/dashboard");
-        else if (data.role === "instructor") navigate("/dashboard2");
-        else navigate("/admin-dashboard");
-      } else {
-        alert("Login failed! Please check your credentials.");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      alert("Something went wrong. Please try again.");
-    }
-  };
-
+  } catch (err) {
+    setError("Invalid username or password");
+    console.error("Login error:", err);
+  }
+};
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-800 px-4">
       <div className="bg-white shadow-xl rounded-lg p-8 w-full max-w-md">
         <h2 className="text-3xl font-bold mb-6 text-purple-700 text-center">Login</h2>
+        {error && <div className="mb-4 text-red-500 text-center">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
