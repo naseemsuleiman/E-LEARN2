@@ -1,23 +1,31 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Course, Enrollment
-from django.contrib.auth import login
-from .serializers import CourseSerializer, EnrollmentSerializer, RegisterSerializer, LoginSerializer, UserSerializer
-from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
-
+from django.contrib.auth import authenticate
+from .models import Course, Enrollment, CustomUser
+from .serializers import (
+    CourseSerializer, 
+    EnrollmentSerializer, 
+    RegisterSerializer, 
+    LoginSerializer
+)
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': serializer.data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -25,10 +33,22 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.validated_data
-            login(request, user)
-            return Response({'id': user.id, 'role': user.role}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            user = serializer.validated_data  # ✅ user is already returned from serializer
+
+            refresh = RefreshToken.for_user(user)
+
+            # Determine role - check if superuser first
+            role = 'admin' if user.is_superuser else user.role
+
+            return Response({
+                'id': user.id,
+                'username': user.username,
+                'role': role,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 class CourseView(APIView):
     def get(self, request):
@@ -68,7 +88,7 @@ class InstructorDashboardView(APIView):
 
     def get(self, request):
         try:
-            if request.user.groups.filter(name="Instructor").exists():
+            if request.user.role == "instructor":  # ✅ correct way to check instructor
                 courses = Course.objects.filter(instructor=request.user)
                 serializer = CourseSerializer(courses, many=True)
                 return Response(serializer.data)
