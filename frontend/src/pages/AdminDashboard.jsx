@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 function AdminDashboard() {
   return (
     <div>
-      <h1>Admin Dashboard</h1>
+      <h1>Admin <Dashboard></Dashboard></h1>
       <h2>Users</h2>
       <ul>
         {adminData.users.map((user) => (
