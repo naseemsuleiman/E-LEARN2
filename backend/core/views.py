@@ -1,17 +1,23 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.contrib.auth import authenticate
-from .models import Course, Enrollment, CustomUser
+from rest_framework import generics
+from django.contrib.auth import authenticate, get_user_model
+from .models import Course, Enrollment, CustomUser, Message
 from .serializers import (
-    CourseSerializer, 
-    EnrollmentSerializer, 
-    RegisterSerializer, 
+    CourseSerializer,
+    EnrollmentSerializer,
+    RegisterSerializer,
     LoginSerializer
 )
+
+User = get_user_model()
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -27,19 +33,16 @@ class RegisterView(APIView):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.validated_data  # ✅ user is already returned from serializer
-
+            user = serializer.validated_data
             refresh = RefreshToken.for_user(user)
-
-            # Determine role - check if superuser first
             role = 'admin' if user.is_superuser else user.role
-
             return Response({
                 'id': user.id,
                 'username': user.username,
@@ -47,26 +50,55 @@ class LoginView(APIView):
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }, status=status.HTTP_200_OK)
-
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
 class CourseView(APIView):
-    def get(self, request):
-        courses = Course.objects.all()
-        serializer = CourseSerializer(courses, many=True)
-        return Response(serializer.data)
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk=None):
+        if pk:
+            course = Course.objects.get(pk=pk)
+            serializer = CourseSerializer(course)
+            return Response(serializer.data)
+        else:
+            courses = Course.objects.all()
+            serializer = CourseSerializer(courses, many=True)
+            return Response(serializer.data)
 
     def post(self, request):
-        if request.user.groups.filter(name="Instructor").exists():
-            serializer = CourseSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(instructor=request.user)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"error": "Only instructors can create courses."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CourseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(instructor=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        course = Course.objects.get(pk=pk)
+        serializer = CourseSerializer(course, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        course = Course.objects.get(pk=pk)
+        course.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseCreateView(generics.CreateAPIView):
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(instructor=self.request.user)
 
 
 class EnrollmentView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, course_id):
         course = Course.objects.get(id=course_id)
         if Enrollment.objects.filter(student=request.user, course=course).exists():
@@ -81,17 +113,95 @@ class EnrollmentView(APIView):
             return Response(serializer.data)
         return Response({"error": "Not enrolled."}, status=status.HTTP_404_NOT_FOUND)
 
-
 class InstructorDashboardView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
-            if request.user.role == "instructor":  # ✅ correct way to check instructor
-                courses = Course.objects.filter(instructor=request.user)
-                serializer = CourseSerializer(courses, many=True)
-                return Response(serializer.data)
-            return Response({"error": "Only instructors can access this dashboard."}, status=status.HTTP_403_FORBIDDEN)
+            print("DEBUG:", request.user, request.user.is_authenticated, getattr(request.user, 'role', None))
+
+            if not hasattr(request.user, 'role') or request.user.role != "instructor":
+                return Response({"error": "Only instructors can access this dashboard."},
+                                status=status.HTTP_403_FORBIDDEN)
+
+            courses = Course.objects.filter(instructor=request.user)
+            course_serializer = CourseSerializer(courses, many=True)
+
+            students = Enrollment.objects.filter(course__in=courses).values('student').distinct().count()
+            revenue = sum([c.price for c in courses])
+            earnings = [
+                {"month": "Jan", "amount": 500},
+                {"month": "Feb", "amount": 700},
+                {"month": "Mar", "amount": 800},
+            ]
+            stats = {
+                "students": students,
+                "revenue": revenue,
+                "earnings": earnings,
+            }
+
+            messages = Message.objects.filter(instructor=request.user).order_by('-created_at')[:10]
+            message_data = [
+                {
+                    "id": msg.id,
+                    "sender": msg.sender.username,
+                    "content": msg.content,
+                    "created_at": msg.created_at,
+                } for msg in messages
+            ]
+
+            return Response({
+                "courses": course_serializer.data,
+                "stats": stats,
+                "messages": message_data,
+            }, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            print("DASHBOARD ERROR:", str(e))
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class StudentCourseListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        courses = Course.objects.all()
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def instructor_stats(request):
+    user = request.user
+    courses = Course.objects.filter(instructor=user)
+    students = Enrollment.objects.filter(course__in=courses).values('student').distinct().count()
+    revenue = sum([c.price for c in courses])
+    earnings = [
+        {"month": "Jan", "amount": 500},
+        {"month": "Feb", "amount": 700},
+        {"month": "Mar", "amount": 800},
+    ]
+    return Response({
+        "students": students,
+        "revenue": revenue,
+        "earnings": earnings,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def instructor_messages(request):
+    user = request.user
+    messages = Message.objects.filter(instructor=user).order_by('-created_at')[:10]
+    data = [
+        {
+            "id": msg.id,
+            "sender": msg.sender.username,
+            "content": msg.content,
+            "created_at": msg.created_at,
+        }
+        for msg in messages
+    ]
+    return Response(data)

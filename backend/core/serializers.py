@@ -5,7 +5,8 @@ from django.contrib.auth import authenticate
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = '__all__'
+        fields = ['id', 'title', 'description', 'thumbnail', 'instructor', 'created_at']
+        read_only_fields = ['id', 'instructor', 'created_at']
 
 class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:

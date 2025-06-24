@@ -54,6 +54,63 @@ export default function Home() {
           ))}
         </div>
       </section>
+       {/* Stats Section */}
+      <section className="py-16 bg-gray-100">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { number: "10,000+", label: "Students Enrolled" },
+              { number: "500+", label: "Courses Available" },
+              { number: "200+", label: "Expert Instructors" },
+              { number: "95%", label: "Satisfaction Rate" },
+            ].map((stat, index) => (
+              <div key={index} className="p-6">
+                <div className="text-4xl md:text-5xl font-bold text-purple-700 mb-2">{stat.number}</div>
+                <div className="text-gray-600">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-20 px-4 max-w-7xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-gray-800">
+          What Our Students Say
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            {
+              quote: "E-Learn transformed my career. The courses are comprehensive and the instructors are top-notch.",
+              author: "Sarah Johnson",
+              role: "UX Designer at TechCorp",
+              avatar: "👩‍💼",
+            },
+            {
+              quote: "I doubled my salary after completing the Full Stack Development program. Best investment ever!",
+              author: "Michael Chen",
+              role: "Senior Developer",
+              avatar: "👨‍💻",
+            },
+            {
+              quote: "The flexibility allowed me to learn while working full-time. The community support is amazing.",
+              author: "Emma Rodriguez",
+              role: "Marketing Manager",
+              avatar: "👩‍🎓",
+            },
+          ].map((testimonial, idx) => (
+            <div
+              key={idx}
+              className="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition"
+            >
+              <div className="text-4xl mb-4">{testimonial.avatar}</div>
+              <p className="text-gray-700 italic mb-6">"{testimonial.quote}"</p>
+              <div className="font-bold text-gray-800">{testimonial.author}</div>
+              <div className="text-gray-600 text-sm">{testimonial.role}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Call to Action */}
       <section className="py-20 bg-purple-700 text-white text-center">
