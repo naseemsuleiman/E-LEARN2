@@ -20,7 +20,7 @@ export const fetchCourses = () => api.get('/courses/').then(res => res.data);
 
 export const createCourse = (courseData) => api.post('/courses/', courseData).then(res => res.data);
 
-export const enrollInCourse = (courseId) => api.post(`/courses/${courseId}/enroll/`).then(res => res.data);
+export const enrollInCourse = (courseId) => api.post(`/enroll/${courseId}/`).then(res => res.data);
 
 // ---- INSTRUCTOR ----
 

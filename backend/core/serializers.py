@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Course, Enrollment, CustomUser
+from .models import Course, Enrollment, CustomUser, Assignment, AssignmentSubmission, Announcement, Profile, Message, Module, Lesson, Notification, GradebookEntry, DiscussionThread, DiscussionPost, Progress, Certificate
 from django.contrib.auth import authenticate
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -43,3 +43,81 @@ class LoginSerializer(serializers.Serializer):
         if user and user.is_active:
             return user
         raise serializers.ValidationError("Invalid credentials")
+
+class AssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+
+class AssignmentSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignmentSubmission
+        fields = '__all__'
+        read_only_fields = ['id', 'submitted_at', 'grade', 'feedback']
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Announcement
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'created_by']
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = '__all__'
+        read_only_fields = ['id', 'user']
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+
+class ModuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Module
+        fields = '__all__'
+        read_only_fields = ['id']
+
+class LessonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lesson
+        fields = '__all__'
+        read_only_fields = ['id']
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+
+class GradebookEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GradebookEntry
+        fields = '__all__'
+        read_only_fields = ['id', 'graded_at']
+
+class DiscussionThreadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiscussionThread
+        fields = '__all__'
+        read_only_fields = ['id', 'created_by', 'created_at']
+
+class DiscussionPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiscussionPost
+        fields = '__all__'
+        read_only_fields = ['id', 'author', 'created_at']
+
+class ProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Progress
+        fields = '__all__'
+        read_only_fields = ['id', 'last_accessed']
+
+class CertificateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Certificate
+        fields = '__all__'
+        read_only_fields = ['id', 'issued_at', 'file_url']

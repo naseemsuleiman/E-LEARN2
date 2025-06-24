@@ -4,7 +4,8 @@ import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 
-export default function CreateCoursePro({ setActiveTab }) {
+// Accept setCourses and courses as props!
+export default function CreateCourse({ setActiveTab, setCourses, courses }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState(null);
@@ -15,7 +16,6 @@ export default function CreateCoursePro({ setActiveTab }) {
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonContent, setLessonContent] = useState('');
   const [lessonVideo, setLessonVideo] = useState('');
-  const [courses, setCourses] = useState([]);
 
   const uploadThumbnail = async () => {
     if (!thumbnailFile) return '';
@@ -23,7 +23,7 @@ export default function CreateCoursePro({ setActiveTab }) {
     const data = new FormData();
     data.append('file', thumbnailFile);
     data.append('upload_preset', 'online-learning');
-    data.append("cloud_name", "dmi53zthk");
+    data.append('cloud_name', 'dmi53zthk');
 
     try {
       const res = await fetch(`https://api.cloudinary.com/v1_1/dmi53zthk/image/upload`, {
@@ -42,7 +42,6 @@ export default function CreateCoursePro({ setActiveTab }) {
       setUploading(false);
     }
   };
-  
 
   const addLesson = () => {
     if (!lessonTitle || !lessonContent) {
@@ -82,8 +81,10 @@ export default function CreateCoursePro({ setActiveTab }) {
         lessons,
       };
       const res = await api.post('/courses/', payload);
+      const newCourse = res.data;
       toast.success('🎉 Course created!');
-      setCourses(prev => [...prev, res.data]);
+      // Use the parent setCourses to update the dashboard!
+      setCourses(prev => [...(Array.isArray(prev) ? prev : []), newCourse]);
       setActiveTab('overview');
     } catch (err) {
       console.error(err);
