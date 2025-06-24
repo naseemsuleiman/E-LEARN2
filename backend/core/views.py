@@ -7,12 +7,26 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import generics
 from django.contrib.auth import authenticate, get_user_model
-from .models import Course, Enrollment, CustomUser, Message
+from .models import Course, Enrollment, CustomUser, Message, Assignment, AssignmentSubmission, Announcement, Profile, Module, Lesson, Notification, GradebookEntry, DiscussionThread, DiscussionPost, Progress, Certificate
 from .serializers import (
     CourseSerializer,
     EnrollmentSerializer,
     RegisterSerializer,
-    LoginSerializer
+    LoginSerializer,
+    AssignmentSerializer,
+    AssignmentSubmissionSerializer,
+    AnnouncementSerializer,
+    ProfileSerializer,
+    MessageSerializer,
+    ModuleSerializer,
+    LessonSerializer,
+    NotificationSerializer,
+    GradebookEntrySerializer,
+    DiscussionThreadSerializer,
+    DiscussionPostSerializer,
+    ProgressSerializer,
+    CertificateSerializer,
+    UserSerializer,
 )
 
 User = get_user_model()
@@ -119,8 +133,6 @@ class InstructorDashboardView(APIView):
 
     def get(self, request):
         try:
-            print("DEBUG:", request.user, request.user.is_authenticated, getattr(request.user, 'role', None))
-
             if not hasattr(request.user, 'role') or request.user.role != "instructor":
                 return Response({"error": "Only instructors can access this dashboard."},
                                 status=status.HTTP_403_FORBIDDEN)
@@ -128,7 +140,14 @@ class InstructorDashboardView(APIView):
             courses = Course.objects.filter(instructor=request.user)
             course_serializer = CourseSerializer(courses, many=True)
 
-            students = Enrollment.objects.filter(course__in=courses).values('student').distinct().count()
+            # List enrolled students for each course
+            course_students = {}
+            for course in courses:
+                enrollments = Enrollment.objects.filter(course=course)
+                students = [UserSerializer(e.student).data for e in enrollments]
+                course_students[course.id] = students
+
+            students_count = Enrollment.objects.filter(course__in=courses).values('student').distinct().count()
             revenue = sum([c.price for c in courses])
             earnings = [
                 {"month": "Jan", "amount": 500},
@@ -136,7 +155,7 @@ class InstructorDashboardView(APIView):
                 {"month": "Mar", "amount": 800},
             ]
             stats = {
-                "students": students,
+                "students": students_count,
                 "revenue": revenue,
                 "earnings": earnings,
             }
@@ -155,10 +174,10 @@ class InstructorDashboardView(APIView):
                 "courses": course_serializer.data,
                 "stats": stats,
                 "messages": message_data,
+                "course_students": course_students,
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print("DASHBOARD ERROR:", str(e))
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -166,7 +185,9 @@ class StudentCourseListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        courses = Course.objects.all()
+        # Return only courses the student is enrolled in
+        enrollments = Enrollment.objects.filter(student=request.user)
+        courses = [enrollment.course for enrollment in enrollments]
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
 
@@ -205,3 +226,139 @@ def instructor_messages(request):
         for msg in messages
     ]
     return Response(data)
+
+# Assignment Views
+class AssignmentListCreateView(generics.ListCreateAPIView):
+    queryset = Assignment.objects.all()
+    serializer_class = AssignmentSerializer
+    permission_classes = [IsAuthenticated]
+
+class AssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Assignment.objects.all()
+    serializer_class = AssignmentSerializer
+    permission_classes = [IsAuthenticated]
+
+# Assignment Submission Views
+class AssignmentSubmissionListCreateView(generics.ListCreateAPIView):
+    queryset = AssignmentSubmission.objects.all()
+    serializer_class = AssignmentSubmissionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        assignment_id = self.kwargs.get('assignment_id')
+        return AssignmentSubmission.objects.filter(assignment_id=assignment_id)
+
+    def perform_create(self, serializer):
+        assignment_id = self.kwargs.get('assignment_id')
+        serializer.save(student=self.request.user, assignment_id=assignment_id)
+
+class AssignmentSubmissionDetailView(generics.RetrieveUpdateAPIView):
+    queryset = AssignmentSubmission.objects.all()
+    serializer_class = AssignmentSubmissionSerializer
+    permission_classes = [IsAuthenticated]
+
+# Announcement Views
+class AnnouncementListCreateView(generics.ListCreateAPIView):
+    queryset = Announcement.objects.all()
+    serializer_class = AnnouncementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+class AnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Announcement.objects.all()
+    serializer_class = AnnouncementSerializer
+    permission_classes = [IsAuthenticated]
+
+# Profile Views
+class ProfileRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user.profile
+
+# Module Views
+class ModuleListCreateView(generics.ListCreateAPIView):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+    permission_classes = [IsAuthenticated]
+
+class ModuleDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+    permission_classes = [IsAuthenticated]
+
+# Lesson Views
+class LessonListCreateView(generics.ListCreateAPIView):
+    queryset = Lesson.objects.all()
+    serializer_class = LessonSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        module_id = self.kwargs.get('module_id')
+        return Lesson.objects.filter(module_id=module_id)
+
+class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Lesson.objects.all()
+    serializer_class = LessonSerializer
+    permission_classes = [IsAuthenticated]
+
+# Notification Views
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+# Gradebook Views
+class GradebookEntryListView(generics.ListAPIView):
+    serializer_class = GradebookEntrySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return GradebookEntry.objects.filter(student=self.request.user)
+
+# Discussion Views
+class DiscussionThreadListCreateView(generics.ListCreateAPIView):
+    serializer_class = DiscussionThreadSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        course_id = self.kwargs.get('course_id')
+        return DiscussionThread.objects.filter(course_id=course_id)
+
+    def perform_create(self, serializer):
+        course_id = self.kwargs.get('course_id')
+        serializer.save(created_by=self.request.user, course_id=course_id)
+
+class DiscussionPostListCreateView(generics.ListCreateAPIView):
+    serializer_class = DiscussionPostSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        thread_id = self.kwargs.get('thread_id')
+        return DiscussionPost.objects.filter(thread_id=thread_id)
+
+    def perform_create(self, serializer):
+        thread_id = self.kwargs.get('thread_id')
+        serializer.save(author=self.request.user, thread_id=thread_id)
+
+# Progress Views
+class ProgressListView(generics.ListAPIView):
+    serializer_class = ProgressSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Progress.objects.filter(student=self.request.user)
+
+# Certificate Views
+class CertificateListView(generics.ListAPIView):
+    serializer_class = CertificateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Certificate.objects.filter(student=self.request.user)

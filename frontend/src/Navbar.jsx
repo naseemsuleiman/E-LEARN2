@@ -31,6 +31,18 @@ export default function Navbar() {
                   className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                   Dashboard
                 </Link>
+                <Link to="/courses" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Courses
+                </Link>
+                <Link to="/gradebook" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Gradebook
+                </Link>
+                <Link to="/notifications" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Notifications
+                </Link>
+                <Link to="/profile" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                  Profile
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
