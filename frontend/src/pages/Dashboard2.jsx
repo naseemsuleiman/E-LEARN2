@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api, { fetchDashboardData } from '../services/api';
+import api, { fetchDashboardData, updateCourse, deleteCourse } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CreateCourse from '../components/CreateCourse';
 import AssignmentList from '../components/AssignmentList';
@@ -94,10 +94,26 @@ function InstructorDashboard() {
   };
 
   // Course actions
-  const handleDeleteCourse = (id) => {
-    setCourses(Array.isArray(courses) ? courses.filter(c => c.id !== id) : []);
-    toast.success('Course deleted.');
+  const handleDeleteCourse = async (id) => {
+    try {
+      await deleteCourse(id);
+      setCourses(Array.isArray(courses) ? courses.filter(c => c.id !== id) : []);
+      toast.success('Course deleted.');
+    } catch {
+      toast.error('Failed to delete course.');
+    }
   };
+
+  const handleEditCourse = async (id, data) => {
+    try {
+      const updated = await updateCourse(id, data);
+      setCourses(Array.isArray(courses) ? courses.map(c => c.id === id ? updated : c) : []);
+      toast.success('Course updated.');
+    } catch {
+      toast.error('Failed to update course.');
+    }
+  };
+
   const handleTogglePublish = (id) => {
     setCourses(
       Array.isArray(courses)

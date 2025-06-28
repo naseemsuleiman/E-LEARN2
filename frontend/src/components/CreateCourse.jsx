@@ -17,6 +17,8 @@ export default function CreateCourse({ setActiveTab, setCourses, courses }) {
   const [lessonContent, setLessonContent] = useState('');
   const [lessonVideo, setLessonVideo] = useState('');
 
+  const [newCourse, setNewCourse] = useState({ title: '', description: '', thumbnail: null });
+
   const uploadThumbnail = async () => {
     if (!thumbnailFile) return '';
     setUploading(true);
@@ -83,7 +85,6 @@ export default function CreateCourse({ setActiveTab, setCourses, courses }) {
       const res = await api.post('/courses/', payload);
       const newCourse = res.data;
       toast.success('🎉 Course created!');
-      // Use the parent setCourses to update the dashboard!
       setCourses(prev => [...(Array.isArray(prev) ? prev : []), newCourse]);
       setActiveTab('overview');
     } catch (err) {
@@ -129,10 +130,7 @@ export default function CreateCourse({ setActiveTab, setCourses, courses }) {
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => {
-              setThumbnailFile(e.target.files[0]);
-              setThumbnailUrl('');
-            }}
+            onChange={e => setNewCourse({ ...newCourse, thumbnail: e.target.files[0] })}
             className="w-full px-4 py-2 border rounded-lg"
           />
           {thumbnailUrl && (

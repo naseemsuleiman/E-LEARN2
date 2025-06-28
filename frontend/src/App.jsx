@@ -15,6 +15,7 @@ import GradebookPage from './pages/GradebookPage';
 import NotificationList from './components/NotificationList';
 import Profile from './pages/Profile';
 import Toast from './components/Toast';
+import ManageCourse from './pages/ManageCourse';
 
 function App() {
   const [toast, setToast] = useState({ message: '', type: 'success' });
@@ -51,6 +52,7 @@ function App() {
         
         <Route element={<PrivateRoute roles={['instructor']} />}>
           <Route path="/dashboard2" element={<InstructorDashboard />} />
+          <Route path="/courses/:courseId/manage" element={<ManageCourse />} />
         </Route>
         
         <Route element={<PrivateRoute roles={['admin']} />}>

@@ -7,8 +7,8 @@ from .views import (
     instructor_messages, AssignmentListCreateView, AssignmentDetailView, AssignmentSubmissionListCreateView,
     AssignmentSubmissionDetailView, AnnouncementListCreateView, AnnouncementDetailView, ProfileRetrieveUpdateView,
     ModuleListCreateView, ModuleDetailView, LessonListCreateView, LessonDetailView, NotificationListView,
-    GradebookEntryListView, DiscussionThreadListCreateView, DiscussionPostListCreateView, ProgressListView,
-    CertificateListView
+    NotificationCreateView, GradebookEntryListView, DiscussionThreadListCreateView, DiscussionPostListCreateView, ProgressListView,
+    CertificateListView, LessonAssignmentsView, ProgressView, CourseStudentsView
 )
 
 urlpatterns = [
@@ -35,9 +35,13 @@ urlpatterns = [
     path('api/modules/<int:module_id>/lessons/', LessonListCreateView.as_view(), name='lesson-list-create'),
     path('api/lessons/<int:pk>/', LessonDetailView.as_view(), name='lesson-detail'),
     path('api/notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('api/notifications/create/', NotificationCreateView.as_view(), name='notification-create'),
     path('api/gradebook/', GradebookEntryListView.as_view(), name='gradebook-list'),
     path('api/courses/<int:course_id>/discussions/', DiscussionThreadListCreateView.as_view(), name='discussion-thread-list-create'),
     path('api/discussions/<int:thread_id>/posts/', DiscussionPostListCreateView.as_view(), name='discussion-post-list-create'),
     path('api/progress/', ProgressListView.as_view(), name='progress-list'),
     path('api/certificates/', CertificateListView.as_view(), name='certificate-list'),
+    path('api/lessons/<int:lesson_id>/assignments/', LessonAssignmentsView.as_view(), name='lesson-assignments'),
+    path('api/progress/mark/', ProgressView.as_view(), name='progress-mark'),
+    path('api/courses/<int:course_id>/students/', CourseStudentsView.as_view(), name='course-students'),
 ]

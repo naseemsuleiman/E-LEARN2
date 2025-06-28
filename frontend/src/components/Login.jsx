@@ -23,9 +23,9 @@ export default function Login() {
       password: formData.password
     });
 
-    const { access, refresh, username, role } = response.data;
+    const { access, refresh, username, role, id } = response.data;
 
-    login(access, refresh, { username, role });
+    login(access, refresh, { id, username, role });
 
     // Redirect based on role
     if (role === 'instructor') {

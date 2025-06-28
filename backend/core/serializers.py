@@ -3,6 +3,7 @@ from .models import Course, Enrollment, CustomUser, Assignment, AssignmentSubmis
 from django.contrib.auth import authenticate
 
 class CourseSerializer(serializers.ModelSerializer):
+    thumbnail = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = Course
         fields = ['id', 'title', 'description', 'thumbnail', 'instructor', 'created_at']

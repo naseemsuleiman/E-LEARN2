@@ -6,11 +6,15 @@ import AssignmentList from '../components/AssignmentList';
 import AnnouncementList from '../components/AnnouncementList';
 import StudentList from '../components/StudentList';
 import Discussion from '../components/Discussion';
+import NotificationList from '../components/NotificationList';
+import NotificationForm from '../components/NotificationForm';
+import { useAuth } from '../context/AuthContext';
 
 const TABS = [
   { key: 'modules', label: 'Modules' },
   { key: 'assignments', label: 'Assignments' },
   { key: 'announcements', label: 'Announcements' },
+  { key: 'notifications', label: 'Notifications' },
   { key: 'discussion', label: 'Discussion' },
   { key: 'students', label: 'Enrolled Students' },
 ];
@@ -20,6 +24,9 @@ const CourseDetail = () => {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('modules');
+  const { user } = useAuth();
+  const userRole = user?.role;
+  const [refreshNotifications, setRefreshNotifications] = useState(false);
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -53,10 +60,28 @@ const CourseDetail = () => {
           </button>
         ))}
       </div>
+      {userRole === 'instructor' && course && (
+        <div className="mb-4">
+          <a
+            href={`/courses/${courseId}/manage`}
+            className="inline-block bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition"
+          >
+            Manage Course
+          </a>
+        </div>
+      )}
       <div>
         {activeTab === 'modules' && <ModuleList courseId={courseId} />}
         {activeTab === 'assignments' && <AssignmentList courseId={courseId} showSubmissionForm={true} />}
         {activeTab === 'announcements' && <AnnouncementList courseId={courseId} />}
+        {activeTab === 'notifications' && (
+          <>
+            {userRole === 'instructor' && (
+              <NotificationForm courseId={courseId} onSuccess={() => setRefreshNotifications(r => !r)} />
+            )}
+            <NotificationList key={refreshNotifications} />
+          </>
+        )}
         {activeTab === 'discussion' && <Discussion courseId={courseId} />}
         {activeTab === 'students' && <StudentList courseId={courseId} />}
       </div>

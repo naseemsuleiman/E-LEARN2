@@ -28,6 +28,7 @@ from .serializers import (
     CertificateSerializer,
     UserSerializer,
 )
+from rest_framework.decorators import action
 
 User = get_user_model()
 
@@ -89,6 +90,8 @@ class CourseView(APIView):
 
     def put(self, request, pk):
         course = Course.objects.get(pk=pk)
+        if course.instructor != request.user:
+            return Response({'error': 'You do not have permission to edit this course.'}, status=status.HTTP_403_FORBIDDEN)
         serializer = CourseSerializer(course, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -97,6 +100,8 @@ class CourseView(APIView):
 
     def delete(self, request, pk):
         course = Course.objects.get(pk=pk)
+        if course.instructor != request.user:
+            return Response({'error': 'You do not have permission to delete this course.'}, status=status.HTTP_403_FORBIDDEN)
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -117,7 +122,11 @@ class EnrollmentView(APIView):
         course = Course.objects.get(id=course_id)
         if Enrollment.objects.filter(student=request.user, course=course).exists():
             return Response({"error": "Already enrolled."}, status=status.HTTP_400_BAD_REQUEST)
-        Enrollment.objects.create(student=request.user, course=course)
+        # Simulate payment process
+        payment_status = request.data.get('payment_status', 'paid')
+        if payment_status != 'paid':
+            return Response({"error": "Payment required."}, status=status.HTTP_402_PAYMENT_REQUIRED)
+        Enrollment.objects.create(student=request.user, course=course, payment_status='paid')
         return Response({"message": "Enrolled successfully."}, status=status.HTTP_201_CREATED)
 
     def get(self, request, course_id):
@@ -126,6 +135,17 @@ class EnrollmentView(APIView):
             serializer = EnrollmentSerializer(enrollment)
             return Response(serializer.data)
         return Response({"error": "Not enrolled."}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, course_id, student_id=None):
+        course = Course.objects.get(id=course_id)
+        if request.user.role == 'instructor' and course.instructor == request.user and student_id:
+            enrollment = Enrollment.objects.filter(student_id=student_id, course=course).first()
+            if enrollment:
+                enrollment.delete()
+                return Response({"message": "Student removed from course."}, status=status.HTTP_204_NO_CONTENT)
+            return Response({"error": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Only instructors can remove students from a course."}, status=status.HTTP_403_FORBIDDEN)
+
 
 class InstructorDashboardView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -233,6 +253,14 @@ class AssignmentListCreateView(generics.ListCreateAPIView):
     serializer_class = AssignmentSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        assignment = serializer.save()
+        # Notify all students enrolled in the course
+        enrollments = Enrollment.objects.filter(course=assignment.course)
+        message = f"New assignment: {assignment.title} has been posted."
+        for enrollment in enrollments:
+            Notification.objects.create(user=enrollment.student, message=message)
+
 class AssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
@@ -264,7 +292,12 @@ class AnnouncementListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        announcement = serializer.save(created_by=self.request.user)
+        # Notify all students enrolled in the course
+        enrollments = Enrollment.objects.filter(course=announcement.course)
+        message = f"New announcement: {announcement.title} has been posted."
+        for enrollment in enrollments:
+            Notification.objects.create(user=enrollment.student, message=message)
 
 class AnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Announcement.objects.all()
@@ -362,3 +395,75 @@ class CertificateListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Certificate.objects.filter(student=self.request.user)
+
+# Notification Create View
+class NotificationCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Only instructors can post notifications
+        if not hasattr(request.user, 'role') or request.user.role != 'instructor':
+            return Response({'error': 'Only instructors can post notifications.'}, status=status.HTTP_403_FORBIDDEN)
+        course_id = request.data.get('course_id')
+        message = request.data.get('message')
+        if not course_id or not message:
+            return Response({'error': 'course_id and message are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            course = Course.objects.get(id=course_id, instructor=request.user)
+        except Course.DoesNotExist:
+            return Response({'error': 'Course not found or not owned by instructor.'}, status=status.HTTP_404_NOT_FOUND)
+        enrollments = Enrollment.objects.filter(course=course)
+        notifications = []
+        for enrollment in enrollments:
+            notification = Notification.objects.create(user=enrollment.student, message=message)
+            notifications.append(notification)
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class LessonAssignmentsView(generics.ListAPIView):
+    serializer_class = AssignmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        lesson_id = self.kwargs.get('lesson_id')
+        return Assignment.objects.filter(lesson_id=lesson_id)
+
+class ProgressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        lesson_id = request.data.get('lesson_id')
+        course_id = request.data.get('course_id')
+        if not lesson_id or not course_id:
+            return Response({'error': 'lesson_id and course_id are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        progress, created = Progress.objects.get_or_create(student=request.user, course_id=course_id)
+        # For simplicity, let's assume each lesson is worth equal progress
+        from .models import Lesson
+        total_lessons = Lesson.objects.filter(module__course_id=course_id).count()
+        if not total_lessons:
+            return Response({'error': 'No lessons found for this course.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Track completed lessons in a set stored in progress (could be a JSONField in production)
+        if not hasattr(progress, 'completed_lessons'):
+            progress.completed_lessons = set()
+        if isinstance(progress.completed_lessons, str):
+            import json
+            progress.completed_lessons = set(json.loads(progress.completed_lessons))
+        progress.completed_lessons.add(str(lesson_id))
+        percent = (len(progress.completed_lessons) / total_lessons) * 100
+        progress.percent_complete = percent
+        import json
+        progress.completed_lessons = json.dumps(list(progress.completed_lessons))
+        progress.save()
+        return Response({'percent_complete': percent})
+
+class CourseStudentsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        course = Course.objects.get(id=course_id)
+        if not hasattr(request.user, 'role') or request.user.role != 'instructor' or course.instructor != request.user:
+            return Response({'error': 'Only the course instructor can view students.'}, status=403)
+        enrollments = Enrollment.objects.filter(course=course)
+        students = [enrollment.student for enrollment in enrollments]
+        serializer = UserSerializer(students, many=True)
+        return Response(serializer.data)

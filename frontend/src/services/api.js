@@ -18,9 +18,13 @@ api.interceptors.request.use((config) => {
 
 export const fetchCourses = () => api.get('/courses/').then(res => res.data);
 
-export const createCourse = (courseData) => api.post('/courses/', courseData).then(res => res.data);
+export const createCourse = (courseData, isFormData = false) =>
+  api.post('/courses/', courseData, {
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+  }).then(res => res.data);
 
-export const enrollInCourse = (courseId) => api.post(`/enroll/${courseId}/`).then(res => res.data);
+export const enrollInCourse = (courseId) =>
+  api.post(`/enroll/${courseId}/`, { payment_status: 'paid' }).then(res => res.data);
 
 // ---- INSTRUCTOR ----
 
@@ -44,5 +48,14 @@ export const fetchDashboardData = async () => {
     throw error;
   }
 };
+
+export const postNotification = (courseId, message) =>
+  api.post('/notifications/create/', { course_id: courseId, message }).then(res => res.data);
+
+export const updateCourse = (courseId, data) =>
+  api.put(`/courses/${courseId}/`, data).then(res => res.data);
+
+export const deleteCourse = (courseId) =>
+  api.delete(`/courses/${courseId}/`).then(res => res.data);
 
 export default api;

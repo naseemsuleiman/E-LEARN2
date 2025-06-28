@@ -15,7 +15,7 @@ class Course(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    thumbnail = models.URLField(blank=True, null=True)  
+    thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)  
     created_at = models.DateTimeField(auto_now_add=True)
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -47,6 +47,7 @@ class Enrollment(models.Model):
     )
     progress = models.FloatField(default=0.0)
     enrolled_at = models.DateTimeField(auto_now_add=True)
+    payment_status = models.CharField(max_length=20, default="pending")  # new field
 
     def __str__(self):
         return f"{self.student.username} in {self.course.title} - {self.progress}%"
@@ -71,6 +72,7 @@ class Message(models.Model):
 
 class Assignment(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="assignments")
+    lesson = models.ForeignKey('Lesson', on_delete=models.CASCADE, related_name="assignments", null=True, blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     due_date = models.DateField()
