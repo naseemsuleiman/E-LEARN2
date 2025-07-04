@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import apiService, { api } from '../services/api';
 
 const Profile = () => {
   const { isLoggedIn, user } = useAuth();
@@ -12,7 +12,7 @@ const Profile = () => {
 
   useEffect(() => {
     if (isLoggedIn) {
-      api.get('/profile/').then(res => {
+      api.get('/api/profile/').then(res => {
         setProfile(res.data);
         setBio(res.data.bio || '');
         setLoading(false);
@@ -29,7 +29,7 @@ const Profile = () => {
     const formData = new FormData();
     formData.append('bio', bio);
     if (avatar) formData.append('avatar', avatar);
-    await api.patch('/profile/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    await api.patch('/api/profile/', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
     setSuccess(true);
     setTimeout(() => setSuccess(false), 2000);
   };
@@ -38,24 +38,24 @@ const Profile = () => {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-4 text-purple-700">Your Profile</h1>
-      <div className="bg-white rounded-lg shadow p-6">
+    <div className="max-w-2xl mx-auto p-8 bg-gradient-to-br from-emerald-50 via-white to-teal-50 min-h-screen">
+      <h1 className="text-3xl font-bold mb-4 text-emerald-700">Your Profile</h1>
+      <div className="bg-white rounded-lg shadow-lg p-6 border border-emerald-100">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center space-x-4">
-            <img src={profile.avatar || '/default-avatar.png'} alt="avatar" className="w-20 h-20 rounded-full object-cover border" />
-            <input type="file" accept="image/*" onChange={handleAvatarChange} />
+            <img src={profile.avatar || '/default-avatar.png'} alt="avatar" className="w-20 h-20 rounded-full object-cover border-2 border-emerald-200" />
+            <input type="file" accept="image/*" onChange={handleAvatarChange} className="text-sm text-gray-600" />
           </div>
           <div>
-            <label className="block font-semibold">Username</label>
-            <input type="text" value={user?.username} disabled className="bg-gray-100 p-2 rounded w-full" />
+            <label className="block font-semibold text-gray-700">Username</label>
+            <input type="text" value={user?.username} disabled className="bg-gray-100 p-2 rounded-lg w-full border border-gray-200" />
           </div>
           <div>
-            <label className="block font-semibold">Bio</label>
-            <textarea value={bio} onChange={e => setBio(e.target.value)} className="bg-gray-100 p-2 rounded w-full" />
+            <label className="block font-semibold text-gray-700">Bio</label>
+            <textarea value={bio} onChange={e => setBio(e.target.value)} className="bg-gray-100 p-2 rounded-lg w-full border border-gray-200" />
           </div>
-          <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded">Update Profile</button>
-          {success && <div className="text-green-600">Profile updated!</div>}
+          <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors">Update Profile</button>
+          {success && <div className="text-emerald-600 font-medium">Profile updated!</div>}
         </form>
       </div>
     </div>

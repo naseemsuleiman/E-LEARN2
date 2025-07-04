@@ -9,7 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('access');
+    const token = localStorage.getItem('access_token');
     const userData = localStorage.getItem('user');
     if (token && userData) {
       setIsLoggedIn(true);
@@ -18,8 +18,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (token, refreshToken, userData) => {
-    localStorage.setItem('access', token);
-    localStorage.setItem('refresh', refreshToken);
+    localStorage.setItem('access_token', token);
+    localStorage.setItem('refresh_token', refreshToken);
     localStorage.setItem('user', JSON.stringify(userData));
     setIsLoggedIn(true);
     setUser(userData);
@@ -27,8 +27,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('access');
-    localStorage.removeItem('refresh');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     setIsLoggedIn(false);
     setUser(null);

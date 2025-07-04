@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import apiService, { api } from '../services/api';
 import SubmissionList from './SubmissionList';
 import { useNavigate } from 'react-router-dom';
 

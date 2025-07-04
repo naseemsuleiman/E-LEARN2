@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import api from '../services/api';
+import React, { useState, useEffect } from 'react';
+import apiService from '../services/api';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
@@ -8,42 +8,16 @@ import { FiPlus, FiTrash2 } from 'react-icons/fi';
 export default function CreateCourse({ setActiveTab, setCourses, courses }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [thumbnailFile, setThumbnailFile] = useState(null);
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
+  const [thumbnail, setThumbnail] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [price, setPrice] = useState('');
+  const [difficulty, setDifficulty] = useState('beginner');
 
   const [lessons, setLessons] = useState([]);
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonContent, setLessonContent] = useState('');
   const [lessonVideo, setLessonVideo] = useState('');
-
-  const [newCourse, setNewCourse] = useState({ title: '', description: '', thumbnail: null });
-
-  const uploadThumbnail = async () => {
-    if (!thumbnailFile) return '';
-    setUploading(true);
-    const data = new FormData();
-    data.append('file', thumbnailFile);
-    data.append('upload_preset', 'online-learning');
-    data.append('cloud_name', 'dmi53zthk');
-
-    try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/dmi53zthk/image/upload`, {
-        method: 'POST',
-        body: data,
-      });
-      const result = await res.json();
-      setThumbnailUrl(result.secure_url);
-      toast.success('✅ Thumbnail uploaded to Cloudinary!');
-      return result.secure_url;
-    } catch (err) {
-      console.error(err);
-      toast.error('❌ Cloudinary upload failed');
-      return '';
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const addLesson = () => {
     if (!lessonTitle || !lessonContent) {
@@ -65,31 +39,32 @@ export default function CreateCourse({ setActiveTab, setCourses, courses }) {
 
   const submitCourse = async (e) => {
     e.preventDefault();
-    if (!title || !description) {
+    if (!title || !description || !shortDescription || !price || !difficulty) {
       toast.error('Fill in all required fields.');
       return;
     }
-
-    let cloudUrl = thumbnailUrl;
-    if (thumbnailFile && !cloudUrl) {
-      cloudUrl = await uploadThumbnail();
-    }
-
+    setUploading(true);
     try {
-      const payload = {
-        title,
-        description,
-        thumbnail_url: cloudUrl || '',
-        lessons,
-      };
-      const res = await api.post('/courses/', payload);
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('short_description', shortDescription);
+      formData.append('price', price);
+      formData.append('difficulty', difficulty);
+      if (thumbnail) {
+        formData.append('thumbnail', thumbnail);
+      }
+      const res = await apiService.createCourse(formData);
       const newCourse = res.data;
       toast.success('🎉 Course created!');
       setCourses(prev => [...(Array.isArray(prev) ? prev : []), newCourse]);
       setActiveTab('overview');
     } catch (err) {
       console.error(err);
+      console.log('Backend error:', err.response?.data);
       toast.error('❌ Failed to create course.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -114,6 +89,17 @@ export default function CreateCourse({ setActiveTab, setCourses, courses }) {
         </div>
 
         <div>
+          <label className="block mb-2 font-semibold">Short Description *</label>
+          <input
+            value={shortDescription}
+            onChange={(e) => setShortDescription(e.target.value)}
+            className="w-full px-4 py-3 border rounded-lg"
+            maxLength={200}
+            required
+          />
+        </div>
+
+        <div>
           <label className="block mb-2 font-semibold">Description *</label>
           <textarea
             value={description}
@@ -124,18 +110,45 @@ export default function CreateCourse({ setActiveTab, setCourses, courses }) {
           />
         </div>
 
-        {/* Cloudinary Thumbnail */}
+        <div>
+          <label className="block mb-2 font-semibold">Price *</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={e => setPrice(e.target.value)}
+            className="w-full px-4 py-3 border rounded-lg"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block mb-2 font-semibold">Difficulty *</label>
+          <select
+            value={difficulty}
+            onChange={e => setDifficulty(e.target.value)}
+            className="w-full px-4 py-3 border rounded-lg"
+            required
+          >
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+
+        {/* Django Thumbnail Upload */}
         <div>
           <label className="block mb-2 font-semibold">Thumbnail</label>
           <input
             type="file"
             accept="image/*"
-            onChange={e => setNewCourse({ ...newCourse, thumbnail: e.target.files[0] })}
+            onChange={e => setThumbnail(e.target.files[0])}
             className="w-full px-4 py-2 border rounded-lg"
           />
-          {thumbnailUrl && (
+          {thumbnail && (
             <img
-              src={thumbnailUrl}
+              src={URL.createObjectURL(thumbnail)}
               alt="Thumbnail Preview"
               className="mt-4 max-h-60 rounded border shadow"
             />

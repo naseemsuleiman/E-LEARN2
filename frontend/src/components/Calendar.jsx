@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import apiService, { api } from '../services/api';
 
 const daysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
 
@@ -9,7 +9,7 @@ const Calendar = () => {
 
   useEffect(() => {
     const fetchAssignments = async () => {
-      const res = await api.get('/assignments/');
+      const res = await api.get('/api/assignments/');
       setAssignments(res.data);
     };
     fetchAssignments();

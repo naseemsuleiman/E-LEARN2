@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import apiService, { api } from '../services/api';
 
 const CertificateList = () => {
   const [certificates, setCertificates] = useState([]);
   useEffect(() => {
-    api.get('/certificates/').then(res => setCertificates(res.data));
+    api.get('/api/certificates/').then(res => setCertificates(res.data));
   }, []);
 
   if (!certificates.length) return <div>No certificates yet.</div>;

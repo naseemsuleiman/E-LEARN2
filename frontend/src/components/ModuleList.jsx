@@ -10,7 +10,7 @@ const ModuleList = ({ courseId }) => {
   useEffect(() => {
     const fetchModules = async () => {
       try {
-        const res = await api.get(`/modules/?course=${courseId}`);
+        const res = await api.get(`/api/modules/?course=${courseId}`);
         setModules(res.data);
       } catch (e) {
         setModules([]);

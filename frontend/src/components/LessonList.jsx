@@ -10,7 +10,7 @@ const LessonList = ({ moduleId }) => {
   useEffect(() => {
     const fetchLessons = async () => {
       try {
-        const res = await api.get(`/modules/${moduleId}/lessons/`);
+        const res = await api.get(`/api/modules/${moduleId}/lessons/`);
         setLessons(res.data);
       } catch (e) {
         setLessons([]);
@@ -33,7 +33,23 @@ const LessonList = ({ moduleId }) => {
             <div className="font-bold">{lesson.title}</div>
             <div className="text-gray-600">{lesson.content.slice(0, 100)}...</div>
             {lesson.video_url && (
-              <a href={lesson.video_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Watch Video</a>
+              <span>
+                {lesson.video_url.includes('youtube.com') || lesson.video_url.includes('youtu.be') || lesson.video_url.includes('vimeo.com') ? (
+                  <iframe
+                    src={lesson.video_url}
+                    title="Lesson Video"
+                    className="w-full h-48 my-2"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                ) : (
+                  <video src={lesson.video_url} controls className="w-full h-48 my-2" />
+                )}
+              </span>
+            )}
+            {lesson.file_attachment && (
+              <video src={lesson.file_attachment} controls className="w-full h-48 my-2" />
             )}
           </li>
         ))}

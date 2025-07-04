@@ -24,7 +24,7 @@ const LessonDetail = ({ lesson, courseId }) => {
   const handleMarkComplete = async () => {
     setMarking(true);
     try {
-      const res = await api.post('/progress/mark/', { lesson_id: lesson.id, course_id: courseId });
+      const res = await api.post('/api/progress/mark/', { lesson_id: lesson.id, course_id: courseId });
       setProgress(res.data.percent_complete);
       if (window.showToast) window.showToast('Lesson marked as complete!', 'success');
     } catch {

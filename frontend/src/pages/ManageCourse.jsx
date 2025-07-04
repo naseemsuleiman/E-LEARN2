@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api, { enrollInCourse } from '../services/api';
+import apiService, { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const ManageCourse = () => {
@@ -18,11 +18,11 @@ const ManageCourse = () => {
     const fetchCourse = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/courses/${courseId}/`);
+        const res = await api.get(`/api/courses/${courseId}/`);
         setCourse(res.data);
         setForm({ title: res.data.title, description: res.data.description });
         // Fetch enrolled students
-        const studentsRes = await api.get(`/courses/${courseId}/students/`);
+        const studentsRes = await api.get(`/api/courses/${courseId}/students/`);
         setStudents(studentsRes.data);
       } catch {
         setCourse(null);
@@ -35,7 +35,7 @@ const ManageCourse = () => {
 
   const handleEdit = async () => {
     try {
-      await api.put(`/courses/${courseId}/`, form);
+      await apiService.updateCourse(courseId, form);
       setEditMode(false);
       window.showToast && window.showToast('Course updated!', 'success');
     } catch {
@@ -46,7 +46,7 @@ const ManageCourse = () => {
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this course?')) return;
     try {
-      await api.delete(`/courses/${courseId}/`);
+      await apiService.deleteCourse(courseId);
       window.showToast && window.showToast('Course deleted!', 'success');
       navigate('/courses');
     } catch {
@@ -57,7 +57,7 @@ const ManageCourse = () => {
   const handleUnenroll = async (studentId) => {
     if (!window.confirm('Remove this student from the course?')) return;
     try {
-      await api.delete(`/enroll/${courseId}/${studentId}/`);
+      await api.delete(`/api/enroll/${courseId}/${studentId}/`);
       setStudents(students.filter(s => s.id !== studentId));
       window.showToast && window.showToast('Student removed.', 'success');
     } catch {

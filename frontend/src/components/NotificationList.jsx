@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import apiService, { api } from '../services/api';
 
 const NotificationList = () => {
   const [notifications, setNotifications] = useState([]);
@@ -8,7 +8,7 @@ const NotificationList = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const res = await api.get('/notifications/');
+        const res = await api.get('/api/notifications/');
         setNotifications(res.data);
       } catch (e) {
         setNotifications([]);
