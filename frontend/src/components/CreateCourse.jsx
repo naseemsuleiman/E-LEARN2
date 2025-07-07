@@ -37,36 +37,60 @@ export default function CreateCourse({ setActiveTab, setCourses, courses }) {
     setLessons((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const submitCourse = async (e) => {
-    e.preventDefault();
-    if (!title || !description || !shortDescription || !price || !difficulty) {
-      toast.error('Fill in all required fields.');
-      return;
-    }
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', description);
-      formData.append('short_description', shortDescription);
-      formData.append('price', price);
-      formData.append('difficulty', difficulty);
-      if (thumbnail) {
-        formData.append('thumbnail', thumbnail);
-      }
-      const res = await apiService.createCourse(formData);
-      const newCourse = res.data;
-      toast.success('🎉 Course created!');
-      setCourses(prev => [...(Array.isArray(prev) ? prev : []), newCourse]);
-      setActiveTab('overview');
-    } catch (err) {
-      console.error(err);
-      console.log('Backend error:', err.response?.data);
-      toast.error('❌ Failed to create course.');
-    } finally {
-      setUploading(false);
-    }
-  };
+ const submitCourse = async (e) => {
+  e.preventDefault();
+
+  if (!title || !description || !shortDescription || !price || !difficulty) {
+    toast.error('Fill in all required fields.');
+    return;
+  }
+
+  setUploading(true);
+
+  try {
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('short_description', shortDescription);
+    formData.append('price', price);
+    formData.append('difficulty', difficulty);
+    if (thumbnail) formData.append('thumbnail', thumbnail);
+
+    // 📦 Construct modules and lessons in the expected structure
+    const modules = [
+      {
+        title: "Introduction",
+        description: "Auto-created module",
+        order: 1,
+        lessons: lessons.map((lesson, index) => ({
+          title: lesson.title,
+          content: lesson.content,
+          video_url: lesson.video || '',
+          order: index + 1,
+          lesson_type: 'video', // or text, quiz — match your model
+          duration: 0 // optional: set if needed
+        })),
+      },
+    ];
+
+    // 🚀 Send modules as stringified JSON
+    formData.append('modules', JSON.stringify(modules));
+
+    // 🛰 Send to backend
+    const res = await apiService.createCourse(formData);
+    const newCourse = res.data;
+
+    setCourses((prev) => [...(Array.isArray(prev) ? prev : []), newCourse]);
+    toast.success('🎉 Course and lessons created!');
+    setActiveTab('overview');
+  } catch (err) {
+    console.error('Backend error:', err.response?.data || err.message);
+    toast.error('❌ Failed to create course');
+  } finally {
+    setUploading(false);
+  }
+};
+
 
   return (
     <motion.div

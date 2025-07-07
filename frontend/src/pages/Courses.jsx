@@ -222,10 +222,13 @@ export default function Courses() {
                   {/* Course Thumbnail */}
                   <div className="relative">
                     <img
-                      src={course.thumbnail || 'https://via.placeholder.com/300x200?text=Course+Image'}
-                      alt={course.title}
-                      className="w-full h-48 object-cover"
-                    />
+  loading="lazy"
+  src={course.thumbnail || '/default-course.png'}
+  alt={course.title}
+  className="w-full h-48 object-cover"
+/>
+
+
                     <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                       <PlayIcon className="h-12 w-12 text-white" />
                     </div>

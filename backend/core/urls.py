@@ -23,8 +23,9 @@ urlpatterns = [
     path('api/categories/<int:pk>/', views.CategoryDetailView.as_view(), name='category-detail'),
     
     # Courses
-    path('api/courses/', CourseView.as_view()),
-    path('api/courses/<int:pk>/', CourseView.as_view()),
+    path('api/courses/', CourseView.as_view(), name='course-list-create'),  # GET all / POST
+    path('api/courses/<int:pk>/', CourseView.as_view(), name='course-detail'),  # GET one / PUT / DELETE
+
     path('api/courses/<int:course_id>/enroll/', EnrollmentView.as_view(), name='enroll'),
     path('api/courses/<int:course_id>/students/', CourseStudentsView.as_view(), name='course-students'),
     path('api/courses/<int:course_id>/progress/', views.CourseProgressView.as_view(), name='course-progress'),
@@ -59,10 +60,13 @@ urlpatterns = [
     # Modules and Lessons
     path('api/modules/', ModuleListCreateView.as_view(), name='module-list-create'),
     path('api/modules/<int:pk>/', ModuleDetailView.as_view(), name='module-detail'),
-    path('api/modules/<int:module_id>/lessons/', LessonListCreateView.as_view(), name='lesson-list-create'),
+    path('api/modules/<int:module_id>/lessons/', LessonListCreateView.as_view(), name='module-lesson-list-create'),
+    path('api/lessons/', LessonListCreateView.as_view(), name='lesson-list'),
     path('api/lessons/<int:pk>/', LessonDetailView.as_view(), name='lesson-detail'),
     path('api/lessons/<int:lesson_id>/progress/', views.LessonProgressView.as_view(), name='lesson-progress'),
     path('api/lessons/<int:lesson_id>/assignments/', LessonAssignmentsView.as_view(), name='lesson-assignments'),
+    
+
     
     # Notifications
     path('api/notifications/', NotificationListView.as_view(), name='notification-list'),
