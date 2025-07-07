@@ -160,6 +160,7 @@ class Lesson(models.Model):
     is_free = models.BooleanField(default=False)  # type: ignore
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    duration = models.IntegerField(default=0)
 
     class Meta:
         ordering = ['order']

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
+window.api = api;
+
 export default function CourseLessons() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -30,6 +32,20 @@ export default function CourseLessons() {
       setLoading(false);
     }
   };
+
+  const markLessonCompleted = async (lessonId) => {
+  try {
+    await api.post(`/api/lessons/${lessonId}/progress/`);
+    // Refresh progress data
+    const progressRes = await api.get(`/api/courses/${id}/progress/`);
+    setProgress(progressRes.data);
+  } catch (error) {
+    console.error('Error marking lesson complete:', error);
+  }
+};
+
+// Update the lesson click handler
+// (Removed invalid onClick handler code)
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading lessons...</div>;
 

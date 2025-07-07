@@ -7,6 +7,7 @@ from .models import (
     Wishlist, LearningPath
 )
 from django.contrib.auth import authenticate
+import json
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -16,16 +17,29 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role', 'points', 'level', 'bio', 'avatar', 'date_of_birth', 'phone', 'address']
+        fields = [
+            'id', 'username', 'email', 'role', 'points', 'level',
+            'bio', 'avatar', 'date_of_birth', 'phone', 'address'
+        ]
         read_only_fields = ['id', 'points', 'level']
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar:
+            if request is not None:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
+        return None  # or return a default placeholder image URL
 
 
 class CourseSerializer(serializers.ModelSerializer):
     instructor = CustomUserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
-    thumbnail = serializers.SerializerMethodField()
+    thumbnail = serializers.ImageField(required=False)
     video_intro = serializers.SerializerMethodField()
     enrolled_students_count = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
@@ -43,13 +57,13 @@ class CourseSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'instructor', 'created_at', 'updated_at', 'enrolled_students_count', 'average_rating']
     
     def get_thumbnail(self, obj):
-        request = self.context.get('request')
-        if obj.thumbnail and hasattr(obj.thumbnail, 'url'):
-            url = obj.thumbnail.url
-            if request is not None:
-                return request.build_absolute_uri(url)
-            return url
-        return None
+            if obj.thumbnail:
+                request = self.context.get('request')
+                if request is not None:
+                    return request.build_absolute_uri(obj.thumbnail.url)
+                return obj.thumbnail.url
+            return None  # or return a default image URL
+
 
     def get_video_intro(self, obj):
         request = self.context.get('request')
@@ -68,6 +82,34 @@ class CourseSerializer(serializers.ModelSerializer):
         if obj.total_ratings > 0:
             return round(obj.rating, 1)
         return 0.0
+
+class CourseCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = [
+            'id', 'title', 'slug', 'description', 'short_description',
+            'thumbnail', 'category', 'difficulty', 'status', 'language',
+            'price', 'original_price', 'tags', 'requirements',
+            'learning_outcomes', 'video_intro'
+        ]
+
+    def create(self, validated_data):
+        # Remove modules if they were accidentally included
+        validated_data.pop('modules', None)
+        return Course.objects.create(
+            instructor=self.context['request'].user,
+            **validated_data
+        )
+    def to_internal_value(self, data):
+        # Parse JSON fields sent as strings in FormData
+        for field in ['tags', 'requirements', 'learning_outcomes']:
+            if field in data and isinstance(data[field], str):
+                try:
+                    data[field] = json.loads(data[field])
+                except json.JSONDecodeError:
+                    self.fail(f"Invalid JSON in {field}")
+        return super().to_internal_value(data)
+
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
@@ -93,33 +135,26 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 
 class LessonSerializer(serializers.ModelSerializer):
-    module = ModuleSerializer(read_only=True)
-    video_url = serializers.SerializerMethodField()
-    file_attachment = serializers.SerializerMethodField()
-    
+    module = serializers.PrimaryKeyRelatedField(queryset=Module.objects.all())
+    video_url_display = serializers.SerializerMethodField(read_only=True)
+    file_attachment = serializers.FileField(required=False, allow_null=True, write_only=True)
+
     class Meta:
         model = Lesson
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        
 
-    def get_video_url(self, obj):
+    def get_video_url_display(self, obj):
         request = self.context.get('request')
-        if obj.video_url:
-            if obj.video_url.startswith('http'):
-                return obj.video_url
-            if request is not None:
+        if obj.video_url and not obj.video_url.startswith("http"):
+            if request:
                 return request.build_absolute_uri(obj.video_url)
-            return obj.video_url
-        return None
+        return obj.video_url
 
-    def get_file_attachment(self, obj):
-        request = self.context.get('request')
-        if obj.file_attachment and hasattr(obj.file_attachment, 'url'):
-            url = obj.file_attachment.url
-            if request is not None:
-                return request.build_absolute_uri(url)
-            return url
-        return None
+    def create(self, validated_data):
+        print("📥 Lesson data being saved:", validated_data)  # <== ADD THIS
+        return super().create(validated_data)
+
 
 
 class LessonProgressSerializer(serializers.ModelSerializer):

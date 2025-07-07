@@ -43,6 +43,7 @@ from .serializers import (
     CourseRatingSerializer,
     WishlistSerializer,
     LearningPathSerializer,
+    CourseCreateSerializer
 
 )
 from rest_framework.decorators import action
@@ -53,6 +54,7 @@ import google.generativeai as genai
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
+import json
 
 User = get_user_model()
 
@@ -103,71 +105,131 @@ class LoginView(APIView):
 
 class CourseView(APIView):
     parser_classes = (MultiPartParser, FormParser)
+
     def get_permissions(self):
         if self.request.method == 'GET':
             return [AllowAny()]
         return [IsAuthenticated()]
 
     def get(self, request, pk=None):
-        if pk:
-            course = Course.objects.get(pk=pk)  # type: ignore[attr-defined]
-            serializer = CourseSerializer(course)
-            return Response(serializer.data)
+        if pk is not None:
+            try:
+                course = Course.objects.get(pk=pk)
+                serializer = CourseSerializer(course, context={'request': request})
+                return Response(serializer.data)
+            except Course.DoesNotExist:
+                return Response({"error": "Course not found."}, status=404)
         else:
-            courses = Course.objects.all()  # type: ignore[attr-defined]
-            serializer = CourseSerializer(courses, many=True)
+            courses = Course.objects.all()
+            serializer = CourseSerializer(courses, many=True, context={'request': request})
             return Response(serializer.data)
-
     def post(self, request):
-        serializer = CourseSerializer(data=request.data)
+        print("📨 Incoming raw data:", request.data)
+
+        modules_raw = request.data.get('modules')
+        if modules_raw and isinstance(modules_raw, str):
+            try:
+                modules_data = json.loads(modules_raw)
+            except json.JSONDecodeError:
+                print("❌ Failed to parse modules JSON")
+                return Response({"modules": ["Invalid JSON format."]}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            modules_data = modules_raw or []
+
+        serializer = CourseSerializer(data=request.data, context={'request': request})
+
         if serializer.is_valid():
-            serializer.save(instructor=request.user)
+            course = serializer.save(instructor=request.user)
+            print("✅ Course created:", course.title)
+
+            for module_data in modules_data:
+                module = Module.objects.create(
+                    course=course,
+                    title=module_data.get('title', 'Untitled Module'),
+                    description=module_data.get('description', ''),
+                    order=module_data.get('order', 1)
+                )
+                print(f"📦 Module created: {module.title}")
+
+                for lesson_data in module_data.get('lessons', []):
+                    Lesson.objects.create(
+                        module=module,
+                        title=lesson_data.get('title', 'Untitled Lesson'),
+                        content=lesson_data.get('content', ''),
+                        lesson_type=lesson_data.get('lesson_type', 'video'),
+                        duration=lesson_data.get('duration', 0),
+                        order=lesson_data.get('order', 1),
+                        video_url=lesson_data.get('video_url', '')
+                    )
+                    print(f"📘 Lesson created in '{module.title}': {lesson_data.get('title')}")
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        print(serializer.errors)  # Debugging line
+
+        print("❌ Course serializer errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, pk):
-        course = Course.objects.get(pk=pk)  # type: ignore[attr-defined]
+        course = Course.objects.get(pk=pk)
         if course.instructor != request.user:
             return Response({'error': 'You do not have permission to edit this course.'}, status=status.HTTP_403_FORBIDDEN)
-        serializer = CourseSerializer(course, data=request.data)
+        serializer = CourseSerializer(course, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        course = Course.objects.get(pk=pk)  # type: ignore[attr-defined]
+        course = Course.objects.get(pk=pk)
         if course.instructor != request.user:
             return Response({'error': 'You do not have permission to delete this course.'}, status=status.HTTP_403_FORBIDDEN)
         course.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class CourseCreateView(generics.CreateAPIView):
-    queryset = Course.objects.all()  # type: ignore[attr-defined]
-    serializer_class = CourseSerializer
+    queryset = Course.objects.all()
+    serializer_class = CourseCreateSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
-
-    def perform_create(self, serializer):
-        serializer.save(instructor=self.request.user)
 
 
 class EnrollmentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, course_id):
-        course = Course.objects.get(id=course_id)  # type: ignore[attr-defined]
-        if Enrollment.objects.filter(student=request.user, course=course).exists():  # type: ignore[attr-defined]
-            return Response({"error": "Already enrolled."}, status=status.HTTP_400_BAD_REQUEST)
-        # Simulate payment process
-        payment_status = request.data.get('payment_status', 'paid')
-        if payment_status != 'paid':
-            return Response({"error": "Payment required."}, status=status.HTTP_402_PAYMENT_REQUIRED)
-        Enrollment.objects.create(student=request.user, course=course, payment_status='paid')  # type: ignore[attr-defined]
-        return Response({"message": "Enrolled successfully."}, status=status.HTTP_201_CREATED)
+        try:
+            course = Course.objects.get(id=course_id)
+            
+            # Check if already enrolled
+            if Enrollment.objects.filter(student=request.user, course=course).exists():
+                return Response(
+                    {"error": "You are already enrolled in this course."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+            # Create enrollment
+            enrollment = Enrollment.objects.create(
+                student=request.user,
+                course=course,
+                status='active'
+            )
+
+            # Create initial progress record
+            Progress.objects.create(
+                student=request.user,
+                course=course,
+                percent_complete=0
+            )
+
+            return Response(
+                {"message": "Successfully enrolled in course."},
+                status=status.HTTP_201_CREATED
+            )
+
+        except Course.DoesNotExist:
+            return Response(
+                {"error": "Course not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
     def get(self, request, course_id):
         enrollment = Enrollment.objects.filter(student=request.user, course_id=course_id).first()  # type: ignore[attr-defined]
         if enrollment:
@@ -184,6 +246,50 @@ class EnrollmentView(APIView):
                 return Response({"message": "Student removed from course."}, status=status.HTTP_204_NO_CONTENT)
             return Response({"error": "Enrollment not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response({"error": "Only instructors can remove students from a course."}, status=status.HTTP_403_FORBIDDEN)
+    
+
+class LessonProgressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, lesson_id):
+        try:
+            lesson = Lesson.objects.get(id=lesson_id)
+            course = lesson.module.course
+            
+            # Get or create progress record
+            progress, created = Progress.objects.get_or_create(
+                student=request.user,
+                course=course
+            )
+            
+            # Mark lesson as completed
+            LessonProgress.objects.update_or_create(
+                student=request.user,
+                lesson=lesson,
+                defaults={'is_completed': True}
+            )
+            
+            # Update overall progress
+            total_lessons = Lesson.objects.filter(module__course=course).count()
+            completed_lessons = LessonProgress.objects.filter(
+                student=request.user,
+                lesson__module__course=course,
+                is_completed=True
+            ).count()
+            
+            progress.percent_complete = (completed_lessons / total_lessons) * 100
+            progress.save()
+            
+            return Response(
+                {"percent_complete": progress.percent_complete},
+                status=status.HTTP_200_OK
+            )
+            
+        except Lesson.DoesNotExist:
+            return Response(
+                {"error": "Lesson not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class InstructorDashboardView(APIView):
@@ -197,7 +303,8 @@ class InstructorDashboardView(APIView):
                                 status=status.HTTP_403_FORBIDDEN)
 
             courses = Course.objects.filter(instructor=request.user)  # type: ignore[attr-defined]
-            course_serializer = CourseSerializer(courses, many=True)
+            course_serializer = CourseSerializer(courses, many=True, context={'request': request})
+
 
             # List enrolled students for each course
             course_students = {}
@@ -385,15 +492,29 @@ class ModuleDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ModuleSerializer
     permission_classes = [IsAuthenticated]
 
-# Lesson Views
+import logging
+logger = logging.getLogger(__name__)
+
 class LessonListCreateView(generics.ListCreateAPIView):
-    queryset = Lesson.objects.all()  # type: ignore[attr-defined]
+    queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        module_id = self.kwargs.get('module_id')
-        return Lesson.objects.filter(module_id=module_id)  # type: ignore[attr-defined]
+    def post(self, request, *args, **kwargs):
+        print("📨 Incoming lesson data:", request.data)
+
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            print("✅ Valid lesson data")
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print("❌ Invalid lesson data:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Lesson.objects.all()  # type: ignore[attr-defined]
