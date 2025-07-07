@@ -101,6 +101,24 @@ function InstructorDashboard() {
     }
   };
 
+// Example function to handle course creation with file upload
+const handleCreateCourse = async (values) => {
+  const formData = new FormData();
+  formData.append('title', values.title);
+  formData.append('description', values.description);
+  // append other text fields...
+  if (values.thumbnail instanceof File) {
+    formData.append('thumbnail', values.thumbnail);
+  }
+
+  await api.post('/api/courses/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+
   // Course actions
   const handleDeleteCourse = async (id) => {
     try {

@@ -172,17 +172,23 @@ const CourseDetail = () => {
   };
 
   const handleEnroll = async () => {
-    setEnrolling(true);
-    setEnrollError('');
-    try {
-      await apiService.enrollInCourse(id);
+  setEnrolling(true);
+  setEnrollError('');
+  
+  try {
+    const response = await api.post(`/api/courses/${id}/enroll/`);
+    
+    if (response.data.message) {
       setEnrolled(true);
-    } catch (e) {
-      setEnrollError(e.message);
-    } finally {
-      setEnrolling(false);
+      // Refresh course data to show enrolled status
+      fetchCourseData();
     }
-  };
+  } catch (error) {
+    setEnrollError(error.response?.data?.error || 'Failed to enroll. Please try again.');
+  } finally {
+    setEnrolling(false);
+  }
+};
 
   if (loading) {
     return (
