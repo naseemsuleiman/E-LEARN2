@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react';
 import apiService, { api } from '../services/api';
 import SubmissionList from './SubmissionList';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Dialog } from '@headlessui/react';
+import { ExclamationCircleIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
 const AssignmentList = ({ courseId, showSubmissionForm }) => {
+  const { user } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
@@ -11,11 +15,22 @@ const AssignmentList = ({ courseId, showSubmissionForm }) => {
   const [success, setSuccess] = useState(false);
   const [showSubmissions, setShowSubmissions] = useState(null);
   const navigate = useNavigate();
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [newAssignment, setNewAssignment] = useState({
+    title: '',
+    description: '',
+    due_date: '',
+    max_points: 100,
+    pdf: null,
+  });
+  const [uploadErrors, setUploadErrors] = useState({});
+  const [highlightedId, setHighlightedId] = useState(null);
 
   useEffect(() => {
     const fetchAssignments = async () => {
       try {
-        const res = await api.get(`/assignments/?course=${courseId}`);
+        const res = await api.get(`/api/assignments/?course=${courseId}`);
         setAssignments(res.data);
       } catch {
         setAssignments([]);
@@ -29,7 +44,7 @@ const AssignmentList = ({ courseId, showSubmissionForm }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedAssignment) return;
-    await api.post(`/assignments/${selectedAssignment}/submissions/`, { text: submissionText });
+    await api.post(`/api/assignments/${selectedAssignment}/submissions/`, { text: submissionText });
     setSuccess(true);
     setSubmissionText('');
     setTimeout(() => setSuccess(false), 2000);
@@ -37,11 +52,158 @@ const AssignmentList = ({ courseId, showSubmissionForm }) => {
     if (window.showToast) window.showToast('Submission successful!', 'success');
   };
 
+  const validateUpload = () => {
+    const errors = {};
+    if (!newAssignment.title.trim()) errors.title = 'Title is required.';
+    if (!newAssignment.description.trim()) errors.description = 'Description is required.';
+    if (!newAssignment.due_date) errors.due_date = 'Due date is required.';
+    if (!newAssignment.max_points || newAssignment.max_points < 1) errors.max_points = 'Max points must be at least 1.';
+    if (!newAssignment.pdf) errors.pdf = 'PDF file is required.';
+    else if (newAssignment.pdf.type !== 'application/pdf') errors.pdf = 'Only PDF files are allowed.';
+    else if (newAssignment.pdf.size > 10 * 1024 * 1024) errors.pdf = 'File size must be under 10MB.';
+    return errors;
+  };
+
+  const handleUploadChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === 'pdf') {
+      setNewAssignment((prev) => ({ ...prev, pdf: files[0] }));
+    } else {
+      setNewAssignment((prev) => ({ ...prev, [name]: value }));
+    }
+    setUploadErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleUploadAssignment = async (e) => {
+    e.preventDefault();
+    const errors = validateUpload();
+    setUploadErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', newAssignment.title);
+      formData.append('description', newAssignment.description);
+      formData.append('due_date', newAssignment.due_date);
+      formData.append('max_points', newAssignment.max_points);
+      formData.append('course', courseId);
+      if (newAssignment.pdf) {
+        formData.append('pdf', newAssignment.pdf);
+      }
+      const created = await apiService.createAssignment(formData);
+      setShowUploadForm(false);
+      setNewAssignment({ title: '', description: '', due_date: '', max_points: 100, pdf: null });
+      // Refresh assignments
+      const res = await api.get(`/api/assignments/?course=${courseId}`);
+      setAssignments(res.data);
+      setHighlightedId(created.id);
+      if (window.showToast) window.showToast('Assignment created!', 'success');
+    } catch (err) {
+      if (window.showToast) window.showToast('Failed to create assignment.', 'error');
+      else alert('Failed to create assignment.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) return <div>Loading assignments...</div>;
   if (!assignments.length) return <div>No assignments found.</div>;
 
+  const getDueStatus = (dueDate) => {
+    const now = new Date();
+    const due = new Date(dueDate);
+    const diff = (due - now) / (1000 * 60 * 60 * 24);
+    if (diff < 0) return 'overdue';
+    if (diff < 3) return 'due-soon';
   return (
     <div className="mb-6">
+      {/* Instructor Upload Form */}
+      {user?.role === 'instructor' && (
+        <div className="mb-6 bg-white p-4 rounded shadow">
+          {!showUploadForm ? (
+            <button
+              className="bg-emerald-600 text-white px-4 py-2 rounded mb-2"
+              onClick={() => setShowUploadForm(true)}
+            >
+              + Upload Assignment
+            </button>
+          ) : (
+            <form onSubmit={handleUploadAssignment} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium">Title</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newAssignment.title}
+                  onChange={handleUploadChange}
+                  className="w-full p-2 border rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Description</label>
+                <textarea
+                  name="description"
+                  value={newAssignment.description}
+                  onChange={handleUploadChange}
+                  className="w-full p-2 border rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Due Date</label>
+                <input
+                  type="date"
+                  name="due_date"
+                  value={newAssignment.due_date}
+                  onChange={handleUploadChange}
+                  className="w-full p-2 border rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Max Points</label>
+                <input
+                  type="number"
+                  name="max_points"
+                  value={newAssignment.max_points}
+                  onChange={handleUploadChange}
+                  className="w-full p-2 border rounded"
+                  min="1"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">PDF File</label>
+                <input
+                  type="file"
+                  name="pdf"
+                  accept="application/pdf"
+                  onChange={handleUploadChange}
+                  className="w-full p-2 border rounded"
+                  required
+                />
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  type="submit"
+                  className="bg-emerald-600 text-white px-4 py-2 rounded"
+                  disabled={uploading}
+                >
+                  {uploading ? 'Uploading...' : 'Create Assignment'}
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-gray-300 rounded"
+                  onClick={() => setShowUploadForm(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
       <h2 className="text-xl font-semibold mb-2">Assignments</h2>
       <ul className="space-y-2">
         {assignments.map((a) => (
@@ -91,5 +253,5 @@ const AssignmentList = ({ courseId, showSubmissionForm }) => {
     </div>
   );
 };
-
+}
 export default AssignmentList;

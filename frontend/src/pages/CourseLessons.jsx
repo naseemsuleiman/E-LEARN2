@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { getCourseProgress } from '../services/lms';
 
 window.api = api;
 
@@ -11,9 +12,12 @@ export default function CourseLessons() {
   const [modules, setModules] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(null);
 
   useEffect(() => {
     fetchData();
+    // Fetch course progress
+    getCourseProgress(id).then(setProgress).catch(() => setProgress(null));
   }, [id]);
 
   const fetchData = async () => {
@@ -59,6 +63,14 @@ export default function CourseLessons() {
           &larr; Back to Course
         </button>
         <h1 className="text-3xl font-bold mb-6 text-gray-900">All Lessons</h1>
+        {progress && (
+          <div className="mb-6">
+            <div className="text-lg font-semibold mb-1">Progress: {progress.percent_complete?.toFixed(1) || 0}%</div>
+            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+              <div className="bg-purple-600 h-3 rounded-full" style={{ width: `${progress.percent_complete || 0}%` }}></div>
+            </div>
+          </div>
+        )}
         {modules.length > 0 ? (
           <div className="space-y-8">
             {modules.map((mod) => (

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import LessonDetail from './LessonDetail';
+import { getLessonProgress, setLessonProgress } from '../services/lms';
 
 const LessonList = ({ moduleId, refreshKey }) => {
   const [lessons, setLessons] = useState([]);
@@ -9,6 +10,7 @@ const LessonList = ({ moduleId, refreshKey }) => {
   const [newLesson, setNewLesson] = useState({ title: '', video_url: '', content: '' });
   const [editLessonId, setEditLessonId] = useState(null);
   const [editLesson, setEditLesson] = useState({ title: '', video_url: '', content: '' });
+  const [lessonProgress, setLessonProgressState] = useState({});
 
   // Helper to fetch lessons
   const fetchLessons = async () => {
@@ -25,6 +27,23 @@ const LessonList = ({ moduleId, refreshKey }) => {
   useEffect(() => {
     fetchLessons();
   }, [moduleId, refreshKey]);
+
+  // Fetch lesson progress for all lessons
+  useEffect(() => {
+    const fetchProgress = async () => {
+      const progressMap = {};
+      for (const lesson of lessons) {
+        try {
+          const progress = await getLessonProgress(lesson.id);
+          progressMap[lesson.id] = progress.is_completed;
+        } catch {
+          progressMap[lesson.id] = false;
+        }
+      }
+      setLessonProgressState(progressMap);
+    };
+    if (lessons.length > 0) fetchProgress();
+  }, [lessons]);
 
   const handleAddLesson = async (e) => {
     e.preventDefault();
@@ -52,6 +71,11 @@ const LessonList = ({ moduleId, refreshKey }) => {
     } catch (err) {
       alert('Error updating lesson');
     }
+  };
+
+  const handleMarkLesson = async (lessonId) => {
+    await setLessonProgress(lessonId);
+    setLessonProgressState(prev => ({ ...prev, [lessonId]: true }));
   };
 
   // Helper to check if a string is a valid video URL (YouTube, Vimeo, or direct video)
@@ -125,39 +149,13 @@ const LessonList = ({ moduleId, refreshKey }) => {
       </form>
       <ul className="space-y-2">
         {lessons.map((lesson) => (
-          <li key={lesson.id} className="bg-yellow-50 rounded p-2">
-            {editLessonId === lesson.id ? (
-              <form onSubmit={handleUpdateLesson} className="space-y-2">
-                <input type="text" value={editLesson.title} onChange={e => setEditLesson({ ...editLesson, title: e.target.value })} className="w-full px-2 py-1 border rounded" required />
-                <label className="block text-sm font-medium text-gray-700">Video URL (YouTube, Vimeo, or direct .mp4)</label>
-                <input type="url" value={editLesson.video_url} onChange={e => setEditLesson({ ...editLesson, video_url: e.target.value })} className="w-full px-2 py-1 border rounded" />
-                {isValidVideoUrl(editLesson.video_url) && (
-                  <div className="my-2">
-                    {editLesson.video_url.includes('youtube.com') || editLesson.video_url.includes('youtu.be') || editLesson.video_url.includes('vimeo.com') ? (
-                      <iframe
-                        src={editLesson.video_url}
-                        title="Lesson Video Preview"
-                        className="w-full h-48"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    ) : (
-                      <video src={editLesson.video_url} controls className="w-full h-48" />
-                    )}
-                  </div>
-                )}
-                <textarea value={editLesson.content} onChange={e => setEditLesson({ ...editLesson, content: e.target.value })} className="w-full px-2 py-1 border rounded" />
-                <button type="submit" className="px-3 py-1 bg-green-600 text-white rounded">Update</button>
-                <button type="button" className="ml-2 px-3 py-1 bg-gray-300 rounded" onClick={() => setEditLessonId(null)}>Cancel</button>
-              </form>
-            ) : (
-              <div>
-                <div className="font-bold flex items-center justify-between">
-                  <span>{lesson.title}</span>
-                  <button className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded" onClick={() => handleEditLesson(lesson)}>Edit</button>
-                </div>
-                <div className="text-gray-600">{lesson.content.slice(0, 100)}...</div>
+          <li key={lesson.id} className="bg-yellow-50 rounded p-2 flex items-center justify-between">
+            <div>
+              <div className="font-bold flex items-center">
+                <span>{lesson.title}</span>
+                {lessonProgress[lesson.id] && <span className="ml-2 text-green-600">&#10003;</span>}
+              </div>
+              <div className="text-gray-600">{lesson.content.slice(0, 100)}...</div>
                 {lesson.video_url && (
                   <span>
                     {lesson.video_url.includes('youtube.com') || lesson.video_url.includes('youtu.be') || lesson.video_url.includes('vimeo.com') ? (
@@ -177,8 +175,14 @@ const LessonList = ({ moduleId, refreshKey }) => {
                 {lesson.file_attachment && (
                   <video src={lesson.file_attachment} controls className="w-full h-48 my-2" />
                 )}
-              </div>
-            )}
+            </div>
+            <div>
+              {!lessonProgress[lesson.id] && (
+                <button className="ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded" onClick={() => handleMarkLesson(lesson.id)}>
+                  Mark Complete
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import { getLessonProgress, setLessonProgress, getCourseProgress } from '../services/lms';
 
 const LessonDetail = ({ lesson, courseId }) => {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
     const fetchAssignments = async () => {
@@ -19,13 +21,20 @@ const LessonDetail = ({ lesson, courseId }) => {
       }
     };
     fetchAssignments();
+    // Fetch lesson progress
+    getLessonProgress(lesson.id).then(res => setIsCompleted(res.is_completed)).catch(() => setIsCompleted(false));
   }, [lesson.id]);
 
   const handleMarkComplete = async () => {
     setMarking(true);
     try {
-      const res = await api.post('/api/progress/mark/', { lesson_id: lesson.id, course_id: courseId });
-      setProgress(res.data.percent_complete);
+      await setLessonProgress(lesson.id);
+      setIsCompleted(true);
+      // Optionally update course progress
+      if (courseId) {
+        const progress = await getCourseProgress(courseId);
+        setProgress(progress.percent_complete);
+      }
       if (window.showToast) window.showToast('Lesson marked as complete!', 'success');
     } catch {
       if (window.showToast) window.showToast('Failed to mark complete.', 'error');
@@ -43,9 +52,10 @@ const LessonDetail = ({ lesson, courseId }) => {
           <a href={lesson.video_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">Watch Video</a>
         </div>
       )}
-      <button onClick={handleMarkComplete} className="bg-green-600 text-white px-4 py-2 rounded mt-2" disabled={marking}>
-        {marking ? 'Marking...' : 'Mark as Complete'}
+      <button onClick={handleMarkComplete} className="bg-green-600 text-white px-4 py-2 rounded mt-2" disabled={marking || isCompleted}>
+        {isCompleted ? 'Completed 5f9' : (marking ? 'Marking...' : 'Mark as Complete')}
       </button>
+      {isCompleted && <div className="mt-2 text-green-600 font-semibold">Lesson completed! &#10003;</div>}
       {progress !== null && (
         <div className="mt-2 text-purple-700 font-semibold">Course Progress: {progress.toFixed(1)}%</div>
       )}

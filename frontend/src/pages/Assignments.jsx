@@ -10,6 +10,7 @@ import {
   ArrowUpTrayIcon,
   EyeIcon
 } from '@heroicons/react/24/outline';
+import AssignmentList from '../components/AssignmentList';
 
 export default function Assignments() {
   const { id } = useParams();
@@ -28,7 +29,7 @@ export default function Assignments() {
 
   const fetchAssignments = async () => {
     try {
-      const response = await api.get(`/courses/${id}/assignments/`);
+      const response = await api.get(`/api/courses/${id}/assignments/`);
       setAssignments(response.data);
     } catch (error) {
       console.error('Error fetching assignments:', error);
@@ -51,7 +52,7 @@ export default function Assignments() {
         formData.append('file_submission', submissionFile);
       }
 
-      await api.post(`/assignments/${assignmentId}/submissions/`, formData, {
+      await api.post(`/api/assignments/${assignmentId}/submissions/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -93,6 +94,16 @@ export default function Assignments() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (user?.role === 'instructor') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AssignmentList courseId={id} />
+        </div>
       </div>
     );
   }

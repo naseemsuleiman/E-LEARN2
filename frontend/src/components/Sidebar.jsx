@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FiBook, FiUsers, FiDollarSign, FiBell, FiUploadCloud, FiSettings, FiHome, FiUser, FiBarChart2 } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
+import { apiService } from "../services/api";
 
 const sidebarLinks = {
   instructor: [
@@ -11,6 +12,7 @@ const sidebarLinks = {
     { to: "/dashboard?tab=students", label: "Students", icon: <FiUsers /> },
     { to: "/dashboard?tab=announcements", label: "Announcements", icon: <FiBell /> },
     { to: "/dashboard?tab=assignments", label: "Assignments", icon: <FiUploadCloud /> },
+    // Dynamic Upload Assignment links will be inserted here
     { to: "/dashboard?tab=analytics", label: "Analytics", icon: <FiBarChart2 /> },
     { to: "/profile", label: "Profile", icon: <FiUser /> },
     { to: "/settings", label: "Settings", icon: <FiSettings /> },
@@ -39,6 +41,23 @@ export default function Sidebar() {
   const role = user?.role || "student";
   const links = sidebarLinks[role] || sidebarLinks["student"];
 
+  // Dynamic assignment links for instructors
+  const [instructorCourses, setInstructorCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  useEffect(() => {
+    if (role === "instructor") {
+      setCoursesLoading(true);
+      apiService.getCourses()
+        .then((allCourses) => {
+          const myCourses = allCourses.filter(
+            (course) => course.instructor === user?.id || course.instructor?.id === user?.id
+          );
+          setInstructorCourses(myCourses);
+        })
+        .finally(() => setCoursesLoading(false));
+    }
+  }, [role, user]);
+
   return (
     <aside className="hidden md:block w-64 bg-emerald-700 text-white min-h-screen shadow-lg sticky top-0 z-40">
       <div className="p-6 flex flex-col space-y-2">
@@ -58,6 +77,28 @@ export default function Sidebar() {
             <span>{link.label}</span>
           </Link>
         ))}
+        {/* Dynamic Upload Assignment links for instructors */}
+        {role === "instructor" && (
+          <div className="mt-2">
+            <div className="text-xs text-emerald-200 font-semibold mb-1 ml-1">Upload Assignment</div>
+            {coursesLoading ? (
+              <div className="text-xs text-gray-200 ml-2">Loading courses...</div>
+            ) : instructorCourses.length === 0 ? (
+              <div className="text-xs text-gray-200 ml-2">No courses</div>
+            ) : (
+              instructorCourses.map((course) => (
+                <Link
+                  key={course.id}
+                  to={`/courses/${course.id}/assignments`}
+                  className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 space-x-3 ml-2 text-sm ${location.pathname === `/courses/${course.id}/assignments` ? 'bg-emerald-800 text-white font-semibold' : 'hover:bg-emerald-600 hover:text-white'}`}
+                >
+                  <span className="text-lg"><FiUploadCloud /></span>
+                  <span>{course.title.length > 18 ? course.title.slice(0, 18) + '…' : course.title}</span>
+                </Link>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </aside>
   );

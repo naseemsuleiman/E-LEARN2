@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import apiService from '../services/api';
 
-function NotificationForm({ courseId, onSuccess }) {
+function NotificationForm({ courses, onSuccess }) {
+  const [courseId, setCourseId] = useState(courses?.[0]?.id || '');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -10,10 +12,9 @@ function NotificationForm({ courseId, onSuccess }) {
     setLoading(true);
     setError('');
     try {
-      const res = await window.api.postNotification(courseId, message);
+      const res = await apiService.postNotification(courseId, message);
       setMessage('');
       if (onSuccess) onSuccess(res);
-      if (window.showToast) window.showToast('Notification sent!', 'success');
     } catch (err) {
       setError('Failed to send notification.');
     } finally {
@@ -23,6 +24,17 @@ function NotificationForm({ courseId, onSuccess }) {
 
   return (
     <form onSubmit={handleSubmit} className="mb-4 flex flex-col md:flex-row gap-2">
+      <select
+        value={courseId}
+        onChange={e => setCourseId(e.target.value)}
+        className="border p-2 rounded"
+        required
+        disabled={loading}
+      >
+        {courses && courses.map(course => (
+          <option key={course.id} value={course.id}>{course.title}</option>
+        ))}
+      </select>
       <input
         type="text"
         value={message}

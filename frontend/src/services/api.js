@@ -461,6 +461,23 @@ export const apiService = {
       throw new Error('Failed to fetch earnings');
     }
   },
+  // Notification methods
+  getNotifications: async () => {
+    try {
+      const response = await api.get('/api/notifications/');
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to fetch notifications');
+    }
+  },
+  postNotification: async (courseId, message) => {
+    try {
+      const response = await api.post('/api/notifications/create/', { course_id: courseId, message });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Failed to post notification');
+    }
+  },
 };
 
 export { api };

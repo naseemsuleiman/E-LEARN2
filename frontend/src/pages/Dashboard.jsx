@@ -10,6 +10,7 @@ import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useLocation, useNavigate } from 'react-router-dom';
+import NotificationForm from '../components/NotificationForm';
 
 // Instructor course management (edit/delete) is now handled in InstructorCourses.jsx. Dashboard only previews courses.
 function Dashboard() {
@@ -416,6 +417,9 @@ function Dashboard() {
                 {activeTab === 'announcements' && (
                   <div className="bg-white p-6 rounded-lg shadow border border-emerald-100">
                     <h2 className="text-xl font-bold text-emerald-700 mb-4">Announcements</h2>
+                    {userRole === 'instructor' && (
+                      <NotificationForm courses={courses} onSuccess={() => {}} />
+                    )}
                     <form
                       className="flex gap-2 mb-4"
                       onSubmit={async e => {

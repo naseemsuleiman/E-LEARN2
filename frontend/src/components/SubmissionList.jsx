@@ -12,7 +12,7 @@ const SubmissionList = ({ assignmentId }) => {
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
-        const res = await api.get(`/assignments/${assignmentId}/submissions/`);
+        const res = await api.get(`/api/assignments/${assignmentId}/submissions/`);
         setSubmissions(res.data);
       } catch {
         setSubmissions([]);
