@@ -1,3 +1,4 @@
+// This page is for advanced course management (students, payment info). Linked from InstructorCourses.jsx.
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiService, { api } from '../services/api';

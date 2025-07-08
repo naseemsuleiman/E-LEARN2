@@ -26,6 +26,7 @@ import LearningPaths from "./pages/LearningPaths";
 import NotFound from "./pages/NotFound";
 import CourseLessons from './pages/CourseLessons';
 import GradebookPage from './pages/GradebookPage';
+import InstructorCourses from "./pages/InstructorCourses";
 import "./App.css";
 
 // Lazy load components for better performance
@@ -51,6 +52,8 @@ function App() {
                   <Route path="/register" element={<Register />} />
                   <Route path="/courses" element={<Courses />} />
                   <Route path="/courses/:id" element={<CourseDetail />} />
+                  {/* Instructor Courses Management */}
+                  <Route path="/instructor-courses" element={<InstructorCourses />} />
                   
                   {/* Protected Routes - Student */}
                   <Route path="/dashboard" element={<Dashboard />} />

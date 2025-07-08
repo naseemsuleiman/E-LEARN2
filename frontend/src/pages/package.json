@@ -1,0 +1,2 @@
+// If using react-router, add a route for InstructorCourses.jsx:
+// <Route path="/instructor-courses" element={<InstructorCourses />} /> 

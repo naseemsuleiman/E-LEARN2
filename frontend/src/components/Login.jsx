@@ -33,7 +33,7 @@ export default function Login() {
 
       // Redirect based on role
       if (role === 'instructor') {
-        navigate("/dashboard2");
+        navigate("/dashboard");
       } else if (role === 'student') {
         navigate("/dashboard");
       } else if (role === 'admin') {

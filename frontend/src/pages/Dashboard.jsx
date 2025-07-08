@@ -11,6 +11,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+// Instructor course management (edit/delete) is now handled in InstructorCourses.jsx. Dashboard only previews courses.
 function Dashboard() {
   const { user } = useAuth();
   const userRole = user?.role;

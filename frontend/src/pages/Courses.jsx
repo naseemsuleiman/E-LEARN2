@@ -1,3 +1,4 @@
+// This page lists all courses for all users. Instructor-specific management is handled in InstructorCourses.jsx.
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';

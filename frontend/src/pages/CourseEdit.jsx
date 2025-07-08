@@ -1,3 +1,4 @@
+// This page is used for robust instructor course editing. Linked from InstructorCourses.jsx for edit actions.
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +11,7 @@ import {
   XMarkIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
+import ModuleList from '../components/ModuleList';
 
 export default function CourseEdit() {
   const { id } = useParams();
@@ -19,6 +21,7 @@ export default function CourseEdit() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [formData, setFormData] = useState({
     title: '',
     short_description: '',
@@ -36,11 +39,12 @@ export default function CourseEdit() {
   });
   const [thumbnail, setThumbnail] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchCourseData();
     fetchCategories();
-  }, [id]);
+  }, [id, refreshKey]);
 
   const fetchCourseData = async () => {
     try {
@@ -73,7 +77,7 @@ export default function CourseEdit() {
 
   const fetchCategories = async () => {
     try {
-      const response = await api.get('/categories/');
+      const response = await api.get('/api/categories/');
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -144,13 +148,21 @@ export default function CourseEdit() {
         },
       });
 
-      navigate(`/courses/${id}`);
+      setSuccessMessage('Course updated successfully! Redirecting...');
+      setTimeout(() => {
+        navigate(`/courses/${id}`);
+      }, 1200);
     } catch (error) {
       console.error('Error updating course:', error);
       alert('Error updating course. Please try again.');
     } finally {
       setSaving(false);
     }
+  };
+
+  // Add a callback to trigger refresh after lessons are added
+  const handleLessonsAdded = () => {
+    setRefreshKey(r => r + 1);
   };
 
   if (loading) {
@@ -172,7 +184,7 @@ export default function CourseEdit() {
     );
   }
 
-  if (user?.role !== 'instructor' || course.instructor !== user?.id) {
+  if (user?.role !== 'instructor' || course.instructor?.id !== user?.id) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -193,6 +205,11 @@ export default function CourseEdit() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Edit Course</h1>
                 <p className="text-gray-600 mt-1">Update your course information and content.</p>
+                {successMessage && (
+                  <div className="mt-2 p-2 bg-green-100 text-green-800 rounded">
+                    {successMessage}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => navigate(`/courses/${id}`)}
@@ -202,6 +219,12 @@ export default function CourseEdit() {
                 <span>Back to Course</span>
               </button>
             </div>
+          </div>
+
+          {/* Module and Lesson Management */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold mb-2">Modules & Lessons</h2>
+            <ModuleList courseId={id} onLessonsAdded={handleLessonsAdded} />
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-8">

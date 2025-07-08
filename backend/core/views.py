@@ -172,7 +172,13 @@ class CourseView(APIView):
         course = Course.objects.get(pk=pk)
         if course.instructor != request.user:
             return Response({'error': 'You do not have permission to edit this course.'}, status=status.HTTP_403_FORBIDDEN)
-        serializer = CourseSerializer(course, data=request.data, context={'request': request})
+        # Use partial update to allow updating only provided fields
+        partial = True
+        data = request.data.copy()
+        # If a new thumbnail is uploaded, update it
+        if 'thumbnail' in request.FILES:
+            data['thumbnail'] = request.FILES['thumbnail']
+        serializer = CourseSerializer(course, data=data, context={'request': request}, partial=partial)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -506,16 +512,18 @@ class LessonListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        print("📨 Incoming lesson data:", request.data)
-
+        print("\U0001F4E8 Incoming lesson data:", request.data)
+        # Ensure module is provided
+        module_id = request.data.get('module')
+        if not module_id:
+            return Response({'error': 'Module ID is required to create a lesson.'}, status=status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(data=request.data)
-
         if serializer.is_valid():
-            print("✅ Valid lesson data")
+            print("\u2705 Valid lesson data")
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            print("❌ Invalid lesson data:", serializer.errors)
+            print("\u274C Invalid lesson data:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

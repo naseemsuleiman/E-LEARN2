@@ -43,6 +43,9 @@ export default function Navbar() {
                   Dashboard
                 </Link>
                 <Link to="/courses" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive('/courses') ? 'bg-emerald-700 text-white' : 'text-emerald-100 hover:text-white'}`}>Courses</Link>
+                {user?.role === 'instructor' && (
+                  <Link to="/instructor-courses" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive('/instructor-courses') ? 'bg-emerald-700 text-white' : 'text-emerald-100 hover:text-white'}`}>My Teaching</Link>
+                )}
                 <Link to="/gradebook" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive('/gradebook') ? 'bg-emerald-700 text-white' : 'text-emerald-100 hover:text-white'}`}>Gradebook</Link>
                 <Link to="/notifications" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive('/notifications') ? 'bg-emerald-700 text-white' : 'text-emerald-100 hover:text-white'}`}>Notifications</Link>
                 <Link to="/messages" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${isActive('/messages') ? 'bg-emerald-700 text-white' : 'text-emerald-100 hover:text-white'}`}>Messages</Link>
@@ -88,6 +91,9 @@ export default function Navbar() {
             <>
               <Link to={user?.role === 'student' ? '/dashboard' : user?.role === 'instructor' ? '/dashboard2' : '/admin-dashboard'} className="block text-white py-2" onClick={() => setMobileOpen(false)}>Dashboard</Link>
               <Link to="/courses" className="block text-white py-2" onClick={() => setMobileOpen(false)}>Courses</Link>
+              {user?.role === 'instructor' && (
+                <Link to="/instructor-courses" className="block text-white py-2" onClick={() => setMobileOpen(false)}>My Teaching</Link>
+              )}
               <Link to="/gradebook" className="block text-white py-2" onClick={() => setMobileOpen(false)}>Gradebook</Link>
               <Link to="/notifications" className="block text-white py-2" onClick={() => setMobileOpen(false)}>Notifications</Link>
               <Link to="/messages" className="block text-white py-2" onClick={() => setMobileOpen(false)}>Messages</Link>
