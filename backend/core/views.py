@@ -994,7 +994,7 @@ class LessonNoteView(APIView):
         try:
             note = LessonNote.objects.get(user=request.user, lesson_id=lesson_id)
             serializer = LessonNoteSerializer(note)
-            return Response(serializer.data)
+            return Response({'notes': serializer.data['notes']})
         except LessonNote.DoesNotExist:
             return Response({'notes': ''}, status=status.HTTP_200_OK)
 
