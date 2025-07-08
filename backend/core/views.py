@@ -11,7 +11,7 @@ from .models import (
     Course, Enrollment, CustomUser, Message, Assignment, AssignmentSubmission, Announcement, 
     Module, Lesson, Notification, DiscussionThread, DiscussionPost, Progress, Certificate,
     Category, Quiz, Question, QuestionOption, QuizAttempt, QuizResponse, LessonProgress,
-    Badge, UserBadge, Payment, CourseRating, Wishlist, LearningPath
+    Badge, UserBadge, Payment, CourseRating, Wishlist, LearningPath, LessonNote
 )
 from .serializers import (
     CourseSerializer,
@@ -43,8 +43,8 @@ from .serializers import (
     CourseRatingSerializer,
     WishlistSerializer,
     LearningPathSerializer,
-    CourseCreateSerializer
-
+    CourseCreateSerializer,
+    LessonNoteSerializer
 )
 from rest_framework.decorators import action
 from django.db.models import Sum
@@ -986,3 +986,23 @@ class MessageThreadView(generics.ListCreateAPIView):
             serializer.save(sender=self.request.user, instructor=other_user)
         else:
             serializer.save(sender=self.request.user, instructor=other_user)
+
+class LessonNoteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, lesson_id):
+        try:
+            note = LessonNote.objects.get(user=request.user, lesson_id=lesson_id)
+            serializer = LessonNoteSerializer(note)
+            return Response(serializer.data)
+        except LessonNote.DoesNotExist:
+            return Response({'notes': ''}, status=status.HTTP_200_OK)
+
+    def post(self, request, lesson_id):
+        notes = request.data.get('notes', '')
+        note, created = LessonNote.objects.update_or_create(
+            user=request.user, lesson_id=lesson_id,
+            defaults={'notes': notes}
+        )
+        serializer = LessonNoteSerializer(note)
+        return Response(serializer.data)

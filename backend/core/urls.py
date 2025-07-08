@@ -9,7 +9,7 @@ from .views import (
     ModuleListCreateView, ModuleDetailView, LessonListCreateView, LessonDetailView, NotificationListView,
     NotificationCreateView, DiscussionThreadListCreateView, DiscussionPostListCreateView, ProgressListView,
     CertificateListView, LessonAssignmentsView, ProgressView, CourseStudentsView, LoginView, GeminiQuizGenerateView,
-    MessageListCreateView, MessageThreadView
+    MessageListCreateView, MessageThreadView, LessonNoteView
 )
 
 urlpatterns = [
@@ -65,6 +65,7 @@ urlpatterns = [
     path('api/lessons/<int:pk>/', LessonDetailView.as_view(), name='lesson-detail'),
     path('api/lessons/<int:lesson_id>/progress/', views.LessonProgressView.as_view(), name='lesson-progress'),
     path('api/lessons/<int:lesson_id>/assignments/', LessonAssignmentsView.as_view(), name='lesson-assignments'),
+    path('api/lessons/<int:lesson_id>/notes/', LessonNoteView.as_view(), name='lesson-notes'),
     
 
     

@@ -486,3 +486,16 @@ class LearningPath(models.Model):
 
     def __str__(self):
         return self.title  # type: ignore[attr-defined]
+
+
+class LessonNote(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    notes = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'lesson']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.lesson.title}"

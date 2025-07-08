@@ -4,7 +4,7 @@ from .models import (
     Message, Module, Lesson, Notification, DiscussionThread, DiscussionPost, 
     Progress, Certificate, Category, Quiz, Question, QuestionOption, QuizAttempt, 
     QuizResponse, LessonProgress, Badge, UserBadge, Payment, CourseRating, 
-    Wishlist, LearningPath
+    Wishlist, LearningPath, LessonNote
 )
 from django.contrib.auth import authenticate
 import json
@@ -414,5 +414,12 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['id', 'username', 'email', 'role', 'points', 'level', 'bio', 'avatar', 'date_of_birth', 'phone', 'address']
         read_only_fields = ['id']
+
+
+class LessonNoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessonNote
+        fields = ['id', 'user', 'lesson', 'notes', 'updated_at']
+        read_only_fields = ['id', 'user', 'lesson', 'updated_at']
 
 
