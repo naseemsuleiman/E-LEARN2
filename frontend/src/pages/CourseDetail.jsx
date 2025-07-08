@@ -136,11 +136,20 @@ const CourseDetail = () => {
   };
 
   const getProgressPercentage = () => {
-    if (!lessons.length) return 0;
-    const completedLessons = lessons.filter(lesson => 
-      progress[lesson.id]?.completed
-    ).length;
+    if (!lessons.length || !progress.lessons_progress) return 0;
+    const completedLessons = lessons.filter(lesson => {
+      const lp = progress.lessons_progress.find(l => l.lesson_id === lesson.id);
+      return lp && lp.is_completed;
+    }).length;
     return Math.round((completedLessons / lessons.length) * 100);
+  };
+
+  // Helper to get lesson progress percent from lessons_progress
+  const getLessonProgress = (lessonId, lessonDuration) => {
+    if (!progress.lessons_progress) return 0;
+    const lp = progress.lessons_progress.find(l => l.lesson_id === lessonId);
+    if (!lp || !lessonDuration) return 0;
+    return Math.min(100, Math.round((lp.watched_duration / lessonDuration) * 100));
   };
 
   const formatDuration = (minutes) => {
@@ -153,7 +162,9 @@ const CourseDetail = () => {
   };
 
   const isLessonCompleted = (lessonId) => {
-    return progress[lessonId]?.completed || false;
+    if (!progress.lessons_progress) return false;
+    const lp = progress.lessons_progress.find(l => l.lesson_id === lessonId);
+    return lp ? lp.is_completed : false;
   };
 
   const handleFileChange = (e) => {
@@ -189,6 +200,15 @@ const CourseDetail = () => {
     setEnrolling(false);
   }
 };
+
+  const refreshProgress = async () => {
+    try {
+      const progressRes = await api.get(`/api/courses/${id}/progress/`);
+      setProgress(progressRes.data || {});
+    } catch (error) {
+      console.error('Error refreshing progress:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -504,30 +524,78 @@ const CourseDetail = () => {
                         <ClockIcon className="h-8 w-8 text-blue-600 mr-3" />
                         <div>
                           <div className="text-2xl font-bold text-gray-900">
-                            {formatDuration(lessons.reduce((total, lesson) => 
-                              isLessonCompleted(lesson.id) ? total + (lesson.duration || 0) : total, 0
-                            ))}
+                            {formatDuration(lessons.reduce((total, lesson) => {
+                              if (!progress.lessons_progress) return total;
+                              const lp = progress.lessons_progress.find(l => l.lesson_id === lesson.id);
+                              return total + (lp ? lp.watched_duration / 60 : 0);
+                            }, 0))}
                           </div>
-                          <div className="text-sm text-gray-600">Time Spent</div>
+                          <div className="text-sm text-gray-600">Time Watched</div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end mb-2">
+                    <button
+                      onClick={refreshProgress}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors"
+                    >
+                      Refresh Progress
+                    </button>
+                  </div>
+                  {/* Lesson-level progress table */}
+                  <div className="mt-8">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Lesson Progress</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full bg-white rounded-lg">
+                        <thead>
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Lesson</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Watched</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Percent</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lessons.map(lesson => {
+                            const lp = progress.lessons_progress ? progress.lessons_progress.find(l => l.lesson_id === lesson.id) : null;
+                            return (
+                              <tr key={lesson.id} className="border-b">
+                                <td className="px-4 py-2">{lesson.title}</td>
+                                <td className="px-4 py-2">{lp ? `${lp.watched_duration}s / ${lesson.duration}s` : `0s / ${lesson.duration}s`}</td>
+                                <td className="px-4 py-2">{getLessonProgress(lesson.id, lesson.duration)}%</td>
+                                <td className="px-4 py-2">
+                                  {lp && lp.is_completed ? (
+                                    <span className="text-green-600 font-bold">Completed</span>
+                                  ) : (
+                                    <span className="text-gray-500">In Progress</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h4>
                     <div className="space-y-3">
-                      {lessons.filter(l => isLessonCompleted(l.id)).slice(-5).reverse().map(lesson => (
-                        <div key={lesson.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                          <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
-                          <div>
-                            <div className="font-medium text-gray-900">Completed: {lesson.title}</div>
-                            <div className="text-sm text-gray-500">
-                              {new Date(progress[lesson.id]?.completed_at).toLocaleDateString()}
+                      {lessons.filter(l => isLessonCompleted(l.id)).slice(-5).reverse().map(lesson => {
+                        const lp = progress.lessons_progress ? progress.lessons_progress.find(l2 => l2.lesson_id === lesson.id) : null;
+                        return (
+                          <div key={lesson.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
+                            <div>
+                              <div className="font-medium text-gray-900">Completed: {lesson.title}</div>
+                              <div className="text-sm text-gray-500">
+                                {lp && lp.is_completed && lp.completed_at ? new Date(lp.completed_at).toLocaleDateString() : ''}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

@@ -167,7 +167,18 @@ export default function Quiz() {
         heading: course.title,
         content: course.description || ''
       });
-      setAiQuestions(data.questions ? data.questions.split('\n') : []);
+      let questions = [];
+      if (typeof data.questions === 'string') {
+        try {
+          questions = JSON.parse(data.questions);
+        } catch (e) {
+          // fallback: split by newlines if not valid JSON
+          questions = data.questions.split('\n');
+        }
+      } else if (Array.isArray(data.questions)) {
+        questions = data.questions;
+      }
+      setAiQuestions(questions);
     } catch (e) {
       setAiError(e.message);
     } finally {

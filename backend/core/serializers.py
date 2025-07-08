@@ -8,6 +8,7 @@ from .models import (
 )
 from django.contrib.auth import authenticate
 import json
+from .models import Module, LessonProgress
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -319,11 +320,38 @@ class DiscussionPostSerializer(serializers.ModelSerializer):
 
 class ProgressSerializer(serializers.ModelSerializer):
     course = CourseSerializer(read_only=True)
-    
+    lessons_progress = serializers.SerializerMethodField()
+
     class Meta:
         model = Progress
         fields = '__all__'
         read_only_fields = ['id', 'last_accessed']
+
+    def get_lessons_progress(self, obj):
+        # Get all lessons for this course
+        modules = Module.objects.filter(course=obj.course)
+        all_lessons = []
+        for module in modules:
+            for lesson in module.lessons.all():
+                all_lessons.append(lesson)
+        # Get progress for each lesson for this user
+        user = self.context.get('request').user if self.context.get('request') and hasattr(self.context.get('request'), 'user') else None
+        progress_map = {}
+        if user:
+            progresses = LessonProgress.objects.filter(student=user, lesson__in=all_lessons)
+            for lp in progresses:
+                progress_map[lp.lesson_id] = lp
+        result = []
+        for lesson in all_lessons:
+            lp = progress_map.get(lesson.id)
+            result.append({
+                'lesson_id': lesson.id,
+                'lesson_title': lesson.title,
+                'duration': lesson.duration,
+                'watched_duration': lp.watched_duration if lp else 0,
+                'is_completed': lp.is_completed if lp else False,
+            })
+        return result
 
 
 class CertificateSerializer(serializers.ModelSerializer):

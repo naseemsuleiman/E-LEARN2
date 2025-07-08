@@ -255,41 +255,46 @@ class LessonProgressView(APIView):
         try:
             lesson = Lesson.objects.get(id=lesson_id)
             course = lesson.module.course
-            
-            # Get or create progress record
-            progress, created = Progress.objects.get_or_create(
+            current_time = int(request.data.get('current_time', 0))
+            completed = bool(request.data.get('completed', False))
+
+            # Get or create lesson progress record
+            lesson_progress, _ = LessonProgress.objects.get_or_create(
                 student=request.user,
-                course=course
+                lesson=lesson
             )
-            
-            # Mark lesson as completed
-            LessonProgress.objects.update_or_create(
-                student=request.user,
-                lesson=lesson,
-                defaults={'is_completed': True}
-            )
-            
-            # Update overall progress
-            total_lessons = Lesson.objects.filter(module__course=course).count()
-            completed_lessons = LessonProgress.objects.filter(
-                student=request.user,
-                lesson__module__course=course,
-                is_completed=True
-            ).count()
-            
-            progress.percent_complete = (completed_lessons / total_lessons) * 100
-            progress.save()
-            
-            return Response(
-                {"percent_complete": progress.percent_complete},
-                status=status.HTTP_200_OK
-            )
-            
+
+            # Update watched_duration (store max ever watched)
+            lesson_progress.watched_duration = max(lesson_progress.watched_duration, current_time)
+            if completed:
+                lesson_progress.is_completed = True
+                from django.utils import timezone
+                lesson_progress.completed_at = timezone.now()
+            lesson_progress.save()
+
+            # Update overall course progress if completed
+            if completed:
+                progress, _ = Progress.objects.get_or_create(
+                    student=request.user,
+                    course=course
+                )
+                total_lessons = Lesson.objects.filter(module__course=course).count()
+                completed_lessons = LessonProgress.objects.filter(
+                    student=request.user,
+                    lesson__module__course=course,
+                    is_completed=True
+                ).count()
+                progress.percent_complete = (completed_lessons / total_lessons) * 100 if total_lessons else 0
+                progress.lessons_completed = completed_lessons
+                progress.total_lessons = total_lessons
+                progress.save()
+
+            return Response({
+                "watched_duration": lesson_progress.watched_duration,
+                "is_completed": lesson_progress.is_completed
+            }, status=status.HTTP_200_OK)
         except Lesson.DoesNotExist:
-            return Response(
-                {"error": "Lesson not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Lesson not found."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class InstructorDashboardView(APIView):
@@ -842,104 +847,41 @@ class PaymentDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class AIQuizGenerateView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, course_id):
-        try:
-            course = Course.objects.get(id=course_id)  # type: ignore[attr-defined]
-            
-            # Simulate AI-generated quiz questions
-            # In a real implementation, you would integrate with Gemini AI API
-            sample_questions = [
-                {
-                    "question": f"What is the main topic of the course '{course.title}'?",
-                    "options": [
-                        course.title,
-                        "Programming",
-                        "Design",
-                        "Business"
-                    ],
-                    "correct_answer": 0
-                },
-                {
-                    "question": f"Which of the following best describes the difficulty level of '{course.title}'?",
-                    "options": [
-                        "Beginner",
-                        "Intermediate", 
-                        "Advanced",
-                        "Expert"
-                    ],
-                    "correct_answer": 0 if course.difficulty == 'beginner' else 1
-                },
-                {
-                    "question": "What should you do to get the most out of this course?",
-                    "options": [
-                        "Complete all assignments",
-                        "Watch videos passively",
-                        "Skip difficult sections",
-                        "Only read the descriptions"
-                    ],
-                    "correct_answer": 0
-                }
-            ]
-            
-            return Response({
-                "questions": sample_questions
-            })
-        except Course.DoesNotExist:  # type: ignore[attr-defined]
-            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
-
-
-class AIQuizSubmitView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, course_id):
-        try:
-            answers = request.data.get('answers', {})
-            questions = request.data.get('questions', [])
-            
-            # Calculate score
-            correct_answers = 0
-            total_questions = len(questions)
-            
-            for question_index, question in enumerate(questions):
-                if str(question_index) in answers:
-                    user_answer = answers[str(question_index)]
-                    if user_answer == question.get('correct_answer', -1):
-                        correct_answers += 1
-            
-            score = round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
-            
-            # Save quiz result to database (optional)
-            # QuizResult.objects.create(
-            #     student=request.user,
-            #     course_id=course_id,
-            #     score=score,
-            #     answers=answers
-            # )
-            
-            return Response({
-                "score": score,
-                "correct_answers": correct_answers,
-                "total_questions": total_questions,
-                "feedback": "Great job!" if score >= 80 else "Keep studying to improve your score."
-            })
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 class GeminiQuizGenerateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         heading = request.data.get('heading')
         content = request.data.get('content', '')
+        course_id = request.data.get('course_id')
+        course = None
+        # Try to get course by id or heading
+        if course_id:
+            try:
+                course = Course.objects.get(id=course_id)
+            except Course.DoesNotExist:
+                return Response({'error': 'Course not found.'}, status=status.HTTP_404_NOT_FOUND)
+        elif heading:
+            course = Course.objects.filter(title__iexact=heading).first()
+            if not course:
+                return Response({'error': 'Course not found by heading.'}, status=status.HTTP_404_NOT_FOUND)
+        # If we have a course, aggregate all lesson content
+        if course:
+            modules = course.modules.all().order_by('order')
+            lesson_texts = []
+            for module in modules:
+                lessons = module.lessons.all().order_by('order')
+                for lesson in lessons:
+                    if lesson.content:
+                        lesson_texts.append(lesson.content)
+            content = '\n'.join(lesson_texts)
+        if not heading and course:
+            heading = course.title
         if not heading:
             return Response({'error': 'Course heading is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        prompt = f"Generate 5 multiple-choice quiz questions for a course titled '{heading}'."
+        prompt = f"Generate at least 10 highly relevant multiple-choice quiz questions for a course titled '{heading}'. Each question should have 4 options and only one correct answer. The questions must be based on the course content and should not be generic. Return the questions in a structured JSON format with fields: question, options (list), and correct_answer (index of correct option)."
         if content:
-            prompt += f" Use the following content as context:\n{content}"
-        # The following Gemini API usage may need to be updated to match the latest SDK:
+            prompt += f" Use the following course content as context:\n{content}"
         try:
             genai.configure(api_key=settings.GEMINI_API_KEY)  # type: ignore[attr-defined]
             model = genai.GenerativeModel('gemini-pro')  # type: ignore[attr-defined]

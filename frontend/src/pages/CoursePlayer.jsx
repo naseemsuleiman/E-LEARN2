@@ -157,6 +157,14 @@ useEffect(() => {
     return progress[lessonId]?.completed || false;
   };
 
+  // Helper to get lesson progress percent
+  const getLessonProgress = (lessonId, lessonDuration) => {
+    const prog = progress[lessonId];
+    if (!prog || !lessonDuration) return 0;
+    // watched_duration may be greater than duration if user skips, so cap at 100%
+    return Math.min(100, Math.round((prog.watched_duration / lessonDuration) * 100));
+  };
+
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -342,21 +350,36 @@ useEffect(() => {
                       <div
                         key={lesson.id}
                         onClick={() => setCurrentLesson(lesson)}
-                        className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-colors ${
+                        className={`flex flex-col space-y-1 p-2 rounded cursor-pointer transition-colors ${
                           currentLesson?.id === lesson.id
                             ? 'bg-purple-600 text-white'
                             : 'hover:bg-gray-700'
                         }`}
                       >
-                        <PlayIcon className="h-4 w-4" />
-                        <div className="flex-1">
-                          <div className="text-sm">{lesson.title}</div>
-                          <div className="text-xs text-gray-400">
-                            {lesson.duration ? formatTime(lesson.duration) : 'N/A'}
+                        <div className="flex items-center space-x-2">
+                          <PlayIcon className="h-4 w-4" />
+                          <div className="flex-1">
+                            <div className="text-sm">{lesson.title}</div>
+                            <div className="text-xs text-gray-400">
+                              {lesson.duration ? formatTime(lesson.duration) : 'N/A'}
+                            </div>
                           </div>
+                          {isLessonCompleted(lesson.id) && (
+                            <CheckCircleIcon className="h-4 w-4 text-green-400" />
+                          )}
                         </div>
-                        {isLessonCompleted(lesson.id) && (
-                          <CheckCircleIcon className="h-4 w-4 text-green-400" />
+                        {/* Progress bar for this lesson */}
+                        {lesson.duration > 0 && (
+                          <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
+                            <div
+                              className="h-1 rounded-full bg-purple-400 transition-all duration-300"
+                              style={{ width: `${getLessonProgress(lesson.id, lesson.duration)}%` }}
+                            ></div>
+                          </div>
+                        )}
+                        {/* Show percent if not completed */}
+                        {!isLessonCompleted(lesson.id) && lesson.duration > 0 && (
+                          <div className="text-xs text-gray-300 mt-0.5">{getLessonProgress(lesson.id, lesson.duration)}%</div>
                         )}
                       </div>
                     ))
@@ -368,21 +391,36 @@ useEffect(() => {
                 <div
                   key={lesson.id}
                   onClick={() => setCurrentLesson(lesson)}
-                  className={`flex items-center space-x-2 p-2 rounded cursor-pointer transition-colors ${
+                  className={`flex flex-col space-y-1 p-2 rounded cursor-pointer transition-colors ${
                     currentLesson?.id === lesson.id
                       ? 'bg-purple-600 text-white'
                       : 'hover:bg-gray-700'
                   }`}
                 >
-                  <PlayIcon className="h-4 w-4" />
-                  <div className="flex-1">
-                    <div className="text-sm">{lesson.title}</div>
-                    <div className="text-xs text-gray-400">
-                      {lesson.duration ? formatTime(lesson.duration) : 'N/A'}
+                  <div className="flex items-center space-x-2">
+                    <PlayIcon className="h-4 w-4" />
+                    <div className="flex-1">
+                      <div className="text-sm">{lesson.title}</div>
+                      <div className="text-xs text-gray-400">
+                        {lesson.duration ? formatTime(lesson.duration) : 'N/A'}
+                      </div>
                     </div>
+                    {isLessonCompleted(lesson.id) && (
+                      <CheckCircleIcon className="h-4 w-4 text-green-400" />
+                    )}
                   </div>
-                  {isLessonCompleted(lesson.id) && (
-                    <CheckCircleIcon className="h-4 w-4 text-green-400" />
+                  {/* Progress bar for this lesson */}
+                  {lesson.duration > 0 && (
+                    <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
+                      <div
+                        className="h-1 rounded-full bg-purple-400 transition-all duration-300"
+                        style={{ width: `${getLessonProgress(lesson.id, lesson.duration)}%` }}
+                      ></div>
+                    </div>
+                  )}
+                  {/* Show percent if not completed */}
+                  {!isLessonCompleted(lesson.id) && lesson.duration > 0 && (
+                    <div className="text-xs text-gray-300 mt-0.5">{getLessonProgress(lesson.id, lesson.duration)}%</div>
                   )}
                 </div>
               ))

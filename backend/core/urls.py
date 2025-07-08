@@ -94,8 +94,7 @@ urlpatterns = [
     path('api/quiz-attempts/<int:attempt_id>/submit/', views.QuizAttemptSubmitView.as_view(), name='quiz-attempt-submit'),
     
     # AI Quiz
-    path('api/courses/<int:course_id>/ai-quiz/', views.AIQuizGenerateView.as_view(), name='ai-quiz-generate'),
-    path('api/courses/<int:course_id>/ai-quiz/submit/', views.AIQuizSubmitView.as_view(), name='ai-quiz-submit'),
+    path('api/gemini-quiz/', GeminiQuizGenerateView.as_view(), name='gemini-quiz-generate'),
     
     # Questions
     path('api/questions/', views.QuestionListCreateView.as_view(), name='question-list-create'),
@@ -120,8 +119,6 @@ urlpatterns = [
     # Payments
     path('api/payments/', views.PaymentListCreateView.as_view(), name='payment-list-create'),
     path('api/payments/<int:pk>/', views.PaymentDetailView.as_view(), name='payment-detail'),
-    
-    path('api/gemini-quiz/', GeminiQuizGenerateView.as_view(), name='gemini-quiz-generate'),
     
     path('api/messages/', MessageListCreateView.as_view(), name='message-list-create'),
     path('api/messages/<int:user_id>/', MessageThreadView.as_view(), name='message-thread'),
