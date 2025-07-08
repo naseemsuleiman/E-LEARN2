@@ -233,6 +233,15 @@ export const apiService = {
     }
   },
 
+  createAssignment: async (assignmentData) => {
+    try {
+      const response = await api.post('/api/assignments/', assignmentData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to create assignment');
+    }
+  },
+
   // Quiz methods
   generateAIQuiz: async (courseId, courseData) => {
     try {
@@ -328,8 +337,60 @@ export const apiService = {
     }
   },
 
+  // Module methods
+  createModule: async (moduleData) => {
+    try {
+      const response = await api.post('/api/modules/', moduleData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to create module');
+    }
+  },
+  // Lesson methods
+  createLesson: async (lessonData) => {
+    try {
+      const response = await api.post('/api/lessons/', lessonData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to create lesson');
+    }
+  },
+  // Category methods
+  getCategories: async () => {
+    try {
+      const response = await api.get('/api/categories/');
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to fetch categories');
+    }
+  },
 
-  
+  // Announcement methods
+  getAnnouncements: async () => {
+    try {
+      const response = await api.get('/api/announcements/');
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to fetch announcements');
+    }
+  },
+  createAnnouncement: async (announcementData) => {
+    try {
+      const response = await api.post('/api/announcements/', announcementData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to create announcement');
+    }
+  },
+  // Student methods
+  getCourseStudents: async (courseId) => {
+    try {
+      const response = await api.get(`/api/courses/${courseId}/students/`);
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to fetch students');
+    }
+  },
 
   // Utility method for file uploads
   uploadFile: async (file, onProgress) => {
@@ -391,6 +452,14 @@ export const apiService = {
   sendMessage: async (userId, content) => {
     const response = await api.post(`/api/messages/${userId}/`, { content });
     return response.data;
+  },
+  getEarnings: async () => {
+    try {
+      const response = await api.get('/api/payments/');
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to fetch earnings');
+    }
   },
 };
 

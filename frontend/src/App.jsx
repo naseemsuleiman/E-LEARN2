@@ -9,7 +9,6 @@ import Navbar from "./Navbar";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import Dashboard from "./pages/Dashboard";
-import InstructorDashboard from "./pages/Dashboard2";
 import AdminDashboard from "./pages/AdminDashboard";
 import Courses from "./pages/Courses";
 import CourseDetail from "./pages/CourseDetail";
@@ -63,7 +62,7 @@ function App() {
                   <Route path="/gradebook" element={<GradebookPage />} />
                   
                   {/* Protected Routes - Instructor */}
-                  <Route path="/dashboard2" element={<InstructorDashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/courses/create" element={<CourseCreate />} />
                   <Route path="/courses/:id/edit" element={<CourseEdit />} />
                   <Route path="/courses/:id/assignments" element={<Assignments />} />

@@ -5,13 +5,13 @@ import { useAuth } from "../context/AuthContext";
 
 const sidebarLinks = {
   instructor: [
-    { to: "/dashboard2", label: "Overview", icon: <FiHome /> },
+    { to: "/dashboard", label: "Overview", icon: <FiHome /> },
     { to: "/courses", label: "Courses", icon: <FiBook /> },
-    { to: "/dashboard2?tab=earnings", label: "Earnings", icon: <FiDollarSign /> },
-    { to: "/dashboard2?tab=students", label: "Students", icon: <FiUsers /> },
-    { to: "/dashboard2?tab=announcements", label: "Announcements", icon: <FiBell /> },
-    { to: "/dashboard2?tab=assignments", label: "Assignments", icon: <FiUploadCloud /> },
-    { to: "/dashboard2?tab=analytics", label: "Analytics", icon: <FiBarChart2 /> },
+    { to: "/dashboard?tab=earnings", label: "Earnings", icon: <FiDollarSign /> },
+    { to: "/dashboard?tab=students", label: "Students", icon: <FiUsers /> },
+    { to: "/dashboard?tab=announcements", label: "Announcements", icon: <FiBell /> },
+    { to: "/dashboard?tab=assignments", label: "Assignments", icon: <FiUploadCloud /> },
+    { to: "/dashboard?tab=analytics", label: "Analytics", icon: <FiBarChart2 /> },
     { to: "/profile", label: "Profile", icon: <FiUser /> },
     { to: "/settings", label: "Settings", icon: <FiSettings /> },
   ],
