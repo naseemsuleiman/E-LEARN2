@@ -233,14 +233,17 @@ export const apiService = {
     }
   },
 
-  createAssignment: async (assignmentData) => {
-    try {
-      const response = await api.post('/api/assignments/', assignmentData);
-      return response.data;
-    } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to create assignment');
-    }
-  },
+ createAssignment: async (assignmentData) => {
+  try {
+    console.log("📤 Submitting assignment:", assignmentData);
+    const response = await api.post('/api/assignments/', assignmentData);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Assignment error:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to create assignment');
+  }
+}
+,
 
   // Quiz methods
   generateAIQuiz: async (courseId, courseData) => {

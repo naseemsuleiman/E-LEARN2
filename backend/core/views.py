@@ -409,6 +409,24 @@ def instructor_messages(request):
     ]
     return Response(data)
 
+class CourseAssignmentsView(generics.ListAPIView):
+    serializer_class = AssignmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        course_id = self.kwargs.get('course_id')
+        user = self.request.user
+        from .models import Assignment  # If not already imported
+
+        if user.role == 'instructor':
+            return Assignment.objects.filter(course__id=course_id, course__instructor=user)
+        elif user.role == 'student':
+            is_enrolled = Enrollment.objects.filter(course_id=course_id, student=user).exists()
+            if is_enrolled:
+                return Assignment.objects.filter(course__id=course_id)
+        return Assignment.objects.none()
+
+
 # Assignment Views
 class AssignmentListCreateView(generics.ListCreateAPIView):
     queryset = Assignment.objects.all()  # type: ignore[attr-defined]
@@ -626,8 +644,8 @@ class LessonAssignmentsView(generics.ListAPIView):
 
     def get_queryset(self):
         lesson_id = self.kwargs.get('lesson_id')
-        return Assignment.objects.filter(lesson_id=lesson_id)  # type: ignore[attr-defined]
-
+        return Assignment.objects.filter(lesson_id=lesson_id)
+    
 class ProgressView(APIView):
     permission_classes = [IsAuthenticated]
 

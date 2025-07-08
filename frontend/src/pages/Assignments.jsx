@@ -47,6 +47,7 @@ export default function Assignments() {
     setSubmitting(true);
     try {
       const formData = new FormData();
+      
       formData.append('text_submission', submissionText);
       if (submissionFile) {
         formData.append('file_submission', submissionFile);
