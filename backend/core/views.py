@@ -140,7 +140,9 @@ class CourseView(APIView):
 
         if serializer.is_valid():
             course = serializer.save(instructor=request.user)
-            print("✅ Course created:", course.title)
+            if isinstance(course, list):
+                course = course[0] if course else None
+            print("✅ Course created:", getattr(course, 'title', ''))
 
             for module_data in modules_data:
                 module = Module.objects.create(
@@ -254,7 +256,7 @@ class EnrollmentView(APIView):
         return Response({"error": "Only instructors can remove students from a course."}, status=status.HTTP_403_FORBIDDEN)
     
 
-class LessonProgressView(APIView):
+class LessonProgressUpdateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, lesson_id):
@@ -309,7 +311,7 @@ class InstructorDashboardView(APIView):
 
     def get(self, request):
         try:
-            if not hasattr(request.user, 'role') or request.user.role != "instructor":
+            if not hasattr(request.user, 'role') or getattr(request.user, 'role', None) != "instructor":
                 return Response({"error": "Only instructors can access this dashboard."},
                                 status=status.HTTP_403_FORBIDDEN)
 
@@ -322,7 +324,7 @@ class InstructorDashboardView(APIView):
             for course in courses:
                 enrollments = Enrollment.objects.filter(course=course)  # type: ignore[attr-defined]
                 students = [UserSerializer(e.student).data for e in enrollments if hasattr(e.student, 'username')]
-                course_students[course.id] = students
+                course_students[course.pk] = students
 
             students_count = Enrollment.objects.filter(course__in=courses).values('student').distinct().count()  # type: ignore[attr-defined]
             revenue = sum([c.price for c in courses])
@@ -345,7 +347,7 @@ class InstructorDashboardView(APIView):
             messages = Message.objects.filter(instructor=request.user).order_by('-created_at')[:10]  # type: ignore[attr-defined]
             message_data = [
                 {
-                    "id": msg.id,
+                    "id": msg.pk,
                     "sender": msg.sender.username if hasattr(msg.sender, 'username') else str(msg.sender),
                     "content": msg.content,
                     "created_at": msg.created_at,
@@ -400,7 +402,7 @@ def instructor_messages(request):
     messages = Message.objects.filter(instructor=user).order_by('-created_at')[:10]  # type: ignore[attr-defined]
     data = [
         {
-            "id": msg.id,
+            "id": msg.pk,
             "sender": msg.sender.username if hasattr(msg.sender, 'username') else str(msg.sender),
             "content": msg.content,
             "created_at": msg.created_at,
@@ -418,9 +420,9 @@ class CourseAssignmentsView(generics.ListAPIView):
         user = self.request.user
         from .models import Assignment  # If not already imported
 
-        if user.role == 'instructor':
+        if getattr(user, 'role', None) == 'instructor':
             return Assignment.objects.filter(course__id=course_id, course__instructor=user)
-        elif user.role == 'student':
+        elif getattr(user, 'role', None) == 'student':
             is_enrolled = Enrollment.objects.filter(course_id=course_id, student=user).exists()
             if is_enrolled:
                 return Assignment.objects.filter(course__id=course_id)
@@ -473,14 +475,14 @@ class AnnouncementListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if hasattr(user, 'role'):
-            if user.role == 'student':
-                # Student: only announcements for courses they are enrolled in
-                enrolled_courses = Enrollment.objects.filter(student=user).values_list('course_id', flat=True)  # type: ignore[attr-defined]
-                return Announcement.objects.filter(course_id__in=enrolled_courses)  # type: ignore[attr-defined]
-            elif user.role == 'instructor':
-                # Instructor: only announcements for their courses
-                return Announcement.objects.filter(course__instructor=user)  # type: ignore[attr-defined]
+        role = getattr(user, 'role', None)
+        if role == 'student':
+            # Student: only announcements for courses they are enrolled in
+            enrolled_courses = Enrollment.objects.filter(student=user).values_list('course_id', flat=True)  # type: ignore[attr-defined]
+            return Announcement.objects.filter(course_id__in=enrolled_courses)  # type: ignore[attr-defined]
+        elif role == 'instructor':
+            # Instructor: only announcements for their courses
+            return Announcement.objects.filter(course__instructor=user)  # type: ignore[attr-defined]
         # Admin or fallback: all announcements
         return Announcement.objects.all()  # type: ignore[attr-defined]
 
@@ -511,7 +513,7 @@ class ModuleListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        course_id = self.request.query_params.get('course')
+        course_id = self.request.GET.get('course')
         if course_id:
             return Module.objects.filter(course_id=course_id)  # type: ignore[attr-defined]
         return Module.objects.all()  # type: ignore[attr-defined]
@@ -620,7 +622,7 @@ class NotificationCreateView(APIView):
 
     def post(self, request):
         # Only instructors can post notifications
-        if not hasattr(request.user, 'role') or request.user.role != 'instructor':
+        if not hasattr(request.user, 'role') or getattr(request.user, 'role', None) != 'instructor':
             return Response({'error': 'Only instructors can post notifications.'}, status=status.HTTP_403_FORBIDDEN)
         course_id = request.data.get('course_id')
         message = request.data.get('message')
@@ -660,17 +662,11 @@ class ProgressView(APIView):
         total_lessons = Lesson.objects.filter(module__course_id=course_id).count()  # type: ignore[attr-defined]
         if not total_lessons:
             return Response({'error': 'No lessons found for this course.'}, status=status.HTTP_400_BAD_REQUEST)
-        # Track completed lessons in a set stored in progress (could be a JSONField in production)
-        if not hasattr(progress, 'completed_lessons'):
-            progress.completed_lessons = set()
-        if isinstance(progress.completed_lessons, str):
-            import json
-            progress.completed_lessons = set(json.loads(progress.completed_lessons))
-        progress.completed_lessons.add(str(lesson_id))
-        percent = (len(progress.completed_lessons) / total_lessons) * 100
+        # Track completed lessons by incrementing lessons_completed
+        progress.lessons_completed = min(progress.lessons_completed + 1, total_lessons)
+        percent = (progress.lessons_completed / total_lessons) * 100
         progress.percent_complete = percent
-        import json
-        progress.completed_lessons = json.dumps(list(progress.completed_lessons))
+        progress.total_lessons = total_lessons
         progress.save()
         return Response({'percent_complete': percent})
 
@@ -679,7 +675,7 @@ class CourseStudentsView(APIView):
 
     def get(self, request, course_id):
         course = Course.objects.get(id=course_id)  # type: ignore[attr-defined]
-        if not hasattr(request.user, 'role') or request.user.role != 'instructor' or course.instructor != request.user:
+        if not hasattr(request.user, 'role') or getattr(request.user, 'role', None) != 'instructor' or course.instructor != request.user:
             return Response({'error': 'Only the course instructor can view students.'}, status=403)
         enrollments = Enrollment.objects.filter(course=course)  # type: ignore[attr-defined]
         students = [enrollment.student for enrollment in enrollments]
@@ -710,7 +706,7 @@ class CourseProgressView(generics.RetrieveAPIView):
             # Create a new progress record if it doesn't exist
             course = Course.objects.get(id=course_id)  # type: ignore[attr-defined]
             # Calculate total lessons through modules
-            total_lessons = sum(module.lessons.count() for module in course.modules.all())
+            total_lessons = sum(Lesson.objects.filter(module=module).count() for module in Module.objects.filter(course=course))
             return Progress.objects.create(
                 student=self.request.user,
                 course=course,
@@ -815,7 +811,7 @@ class LearningPathListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.role == 'instructor':
+        if getattr(self.request.user, 'role', None) == 'instructor':
             return LearningPath.objects.filter(created_by=self.request.user)  # type: ignore[attr-defined]
         return LearningPath.objects.filter(is_public=True)  # type: ignore[attr-defined]
 
@@ -893,10 +889,10 @@ class GeminiQuizGenerateView(APIView):
                 return Response({'error': 'Course not found by heading.'}, status=status.HTTP_404_NOT_FOUND)
         # If we have a course, aggregate all lesson content
         if course:
-            modules = course.modules.all().order_by('order')
+            modules = Module.objects.filter(course=course).order_by('order')
             lesson_texts = []
             for module in modules:
-                lessons = module.lessons.all().order_by('order')
+                lessons = Lesson.objects.filter(module=module).order_by('order')
                 for lesson in lessons:
                     if lesson.content:
                         lesson_texts.append(lesson.content)
@@ -950,7 +946,7 @@ class MessageThreadView(generics.ListCreateAPIView):
         other_user = User.objects.get(id=other_user_id)  # type: ignore[attr-defined]
         # If current user is instructor, sender=instructor, instructor=other_user (student)
         # If current user is student, sender=student, instructor=other_user (instructor)
-        if self.request.user.role == 'instructor':
+        if getattr(self.request.user, 'role', None) == 'instructor':
             serializer.save(sender=self.request.user, instructor=other_user)
         else:
             serializer.save(sender=self.request.user, instructor=other_user)
@@ -962,7 +958,7 @@ class LessonNoteView(APIView):
         try:
             note = LessonNote.objects.get(user=request.user, lesson_id=lesson_id)
             serializer = LessonNoteSerializer(note)
-            return Response({'notes': serializer.data['notes']})
+            return Response({'notes': serializer.data.get('notes', '')})
         except LessonNote.DoesNotExist:
             return Response({'notes': ''}, status=status.HTTP_200_OK)
 

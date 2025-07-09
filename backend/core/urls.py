@@ -63,7 +63,7 @@ urlpatterns = [
     path('api/modules/<int:module_id>/lessons/', LessonListCreateView.as_view(), name='module-lesson-list-create'),
     path('api/lessons/', LessonListCreateView.as_view(), name='lesson-list'),
     path('api/lessons/<int:pk>/', LessonDetailView.as_view(), name='lesson-detail'),
-    path('api/lessons/<int:lesson_id>/progress/', views.LessonProgressView.as_view(), name='lesson-progress'),
+    path('api/lessons/<int:lesson_id>/progress/', views.LessonProgressUpdateView.as_view(), name='lesson-progress'),
     path('lessons/<int:lesson_id>/assignments/', LessonAssignmentsView.as_view(), name='lesson-assignments'),
     path('api/lessons/<int:lesson_id>/notes/', LessonNoteView.as_view(), name='lesson-notes'),
     
