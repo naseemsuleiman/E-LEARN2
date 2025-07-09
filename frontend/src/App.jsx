@@ -28,6 +28,7 @@ import CourseLessons from './pages/CourseLessons';
 import GradebookPage from './pages/GradebookPage';
 import InstructorCourses from "./pages/InstructorCourses";
 import "./App.css";
+import AssignmentList from "./components/AssignmentList";
 
 // Lazy load components for better performance
 const LazyHome = React.lazy(() => import('./pages/Home'));
@@ -69,6 +70,8 @@ function App() {
                   <Route path="/courses/create" element={<CourseCreate />} />
                   <Route path="/courses/:id/edit" element={<CourseEdit />} />
                   <Route path="/courses/:id/assignments" element={<Assignments />} />
+                  <Route path="/courses/:courseId/assignments" element={<AssignmentList showSubmissionForm={false} />} />
+
                   <Route path="/courses/:id/discussion" element={<Discussion />} />
                   
                   {/* Protected Routes - Learning */}

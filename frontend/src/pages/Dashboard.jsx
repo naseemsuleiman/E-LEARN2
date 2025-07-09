@@ -30,7 +30,7 @@ function Dashboard() {
   const [announcementsLoading, setAnnouncementsLoading] = useState(false);
   const [announcementsError, setAnnouncementsError] = useState("");
   const [assignments, setAssignments] = useState([]);
-  const [assignmentForm, setAssignmentForm] = useState({ title: "", description: "" });
+  const [assignmentForm, setAssignmentForm] = useState({ title: "", description: "" , due_date: "",course: ""});
   const [courseForm, setCourseForm] = useState({
     title: '',
     description: '',
@@ -182,6 +182,7 @@ function Dashboard() {
         .finally(() => setProfileLoading(false));
     }
   }, [activeTab]);
+  
 
   if (loading) return <div className="text-center py-10">Loading dashboard...</div>;
 
@@ -201,7 +202,8 @@ function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map(course => (
             <div key={course.id} className="bg-emerald-50 rounded-lg shadow p-4 border border-emerald-100 flex flex-col">
-              <img src={course.thumbnail || '/default-course.png'} alt={course.title} className="w-full h-32 object-cover rounded mb-3 border border-emerald-200" />
+              <img src={`http://localhost:8000${course.thumbnail}`} alt={course.title} />
+
               <h3 className="font-semibold text-emerald-800 text-lg mb-1">{course.title}</h3>
               <div className="text-gray-600 text-sm mb-2">{course.short_description}</div>
               <div className="flex-1" />
@@ -460,57 +462,123 @@ function Dashboard() {
                     </ul>
                   </div>
                 )}
-                {activeTab === 'assignments' && (
-                  <div className="bg-white p-6 rounded-lg shadow border border-emerald-100">
-                    <h2 className="text-xl font-bold text-emerald-700 mb-4">Assignments</h2>
-                    <form
-                      className="mb-6 flex flex-col gap-2"
-                      onSubmit={async e => {
-                        e.preventDefault();
-                        if (!assignmentForm.title.trim() || !assignmentForm.description.trim()) return;
-                        try {
-                          setAssignmentsLoading(true);
-                          setAssignmentsError("");
-                          const newAssignment = await apiService.createAssignment({ title: assignmentForm.title, description: assignmentForm.description });
-                          setAssignments([newAssignment, ...assignments]);
-                          setAssignmentForm({ title: "", description: "" });
-                        } catch (err) {
-                          setAssignmentsError(err.message || 'Failed to post assignment');
-                        } finally {
-                          setAssignmentsLoading(false);
-                        }
-                      }}
-                    >
-                      <input
-                        className="border border-emerald-300 rounded p-2"
-                        value={assignmentForm.title}
-                        onChange={e => setAssignmentForm(f => ({ ...f, title: e.target.value }))}
-                        placeholder="Assignment Title"
-                        required
-                      />
-                      <textarea
-                        className="border border-emerald-300 rounded p-2"
-                        value={assignmentForm.description}
-                        onChange={e => setAssignmentForm(f => ({ ...f, description: e.target.value }))}
-                        placeholder="Assignment Description"
-                        required
-                      />
-                      <button className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Post Assignment</button>
-                    </form>
-                    {assignmentsLoading && <div className="mb-2 text-blue-600">Loading...</div>}
-                    {assignmentsError && <div className="mb-2 text-red-600">{assignmentsError}</div>}
-                    <ul className="space-y-3">
-                      {assignments.length === 0 && !assignmentsLoading && <li className="text-gray-400">No assignments yet.</li>}
-                      {assignments.map((a, i) => (
-                        <li key={a.id || i} className="border p-3 rounded flex flex-col">
-                          <span className="font-semibold">{a.title}</span>
-                          <span>{a.description}</span>
-                          <span className="text-xs text-gray-400">{a.date ? new Date(a.date).toLocaleString() : ''}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+               {activeTab === 'assignments' && (
+  <div className="bg-white p-6 rounded-lg shadow border border-emerald-100">
+    <h2 className="text-xl font-bold text-emerald-700 mb-4">Assignments</h2>
+    
+    {/* Assignment Create Form */}
+    <form
+      className="mb-6 flex flex-col gap-2"
+      onSubmit={async e => {
+        e.preventDefault();
+        if (!assignmentForm.title.trim() || !assignmentForm.description.trim()) return;
+
+        try {
+          setAssignmentsLoading(true);
+          setAssignmentsError("");
+
+          const formData = new FormData();
+          formData.append("title", assignmentForm.title);
+          formData.append("description", assignmentForm.description);
+          formData.append("due_date", new Date(assignmentForm.due_date).toISOString());
+          formData.append("course", assignmentForm.course); // ✅ Add this
+
+          if (assignmentForm.file) {
+            formData.append("file_submission", assignmentForm.file);
+          }
+
+          const response = await api.post("/api/assignments/", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+
+          setAssignments([response.data, ...assignments]);
+          setAssignmentForm({ title: "", description: "", due_date: "", file: null });
+        } catch (err) {
+          setAssignmentsError(err.message || "Failed to post assignment");
+        } finally {
+          setAssignmentsLoading(false);
+        }
+      }}
+    >
+      <input
+        className="border border-emerald-300 rounded p-2"
+        value={assignmentForm.title}
+        onChange={e => setAssignmentForm(f => ({ ...f, title: e.target.value }))}
+        placeholder="Assignment Title"
+        required
+      />
+      <textarea
+        className="border border-emerald-300 rounded p-2"
+        value={assignmentForm.description}
+        onChange={e => setAssignmentForm(f => ({ ...f, description: e.target.value }))}
+        placeholder="Assignment Description"
+        required
+      />
+      <input
+  type="datetime-local"
+  value={assignmentForm.due_date}
+  onChange={e => setAssignmentForm(f => ({ ...f, due_date: e.target.value }))}
+  required
+/>
+
+      <input
+        type="file"
+        className="border border-emerald-300 rounded p-2"
+        accept=".pdf,.doc,.docx,.txt,.zip,.rar"
+        onChange={e => setAssignmentForm(f => ({ ...f, file: e.target.files[0] }))}
+      />
+      <select
+  className="border border-emerald-300 rounded p-2"
+  value={assignmentForm.course}
+  onChange={e => setAssignmentForm(f => ({ ...f, course: e.target.value }))}
+  required
+>
+  <option value="">Select Course</option>
+  {courses.map(course => (
+    <option key={course.id} value={course.id}>
+      {course.title}
+    </option>
+  ))}
+</select>
+
+
+      <button className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">
+        Post Assignment
+      </button>
+    </form>
+
+    {/* Loading / Error UI */}
+    {assignmentsLoading && <div className="mb-2 text-blue-600">Loading...</div>}
+    {assignmentsError && <div className="mb-2 text-red-600">{assignmentsError}</div>}
+
+    {/* Assignment List */}
+    <ul className="space-y-3">
+      {assignments.length === 0 && !assignmentsLoading && (
+        <li className="text-gray-400">No assignments yet.</li>
+      )}
+      {assignments.map((a, i) => (
+        <li key={a.id || i} className="border p-3 rounded flex flex-col space-y-1">
+          <span className="font-semibold text-lg">{a.title}</span>
+          <span className="text-gray-600">{a.description}</span>
+          <span className="text-sm text-gray-500">
+            Due: {a.due_date ? new Date(a.due_date).toLocaleString() : 'N/A'}
+          </span>
+          {a.file_submission && (
+            <a
+              href={a.file_submission}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline text-sm"
+            >
+              📄 View Uploaded File
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
                 {activeTab === 'create' && (
                   <div className="bg-white p-6 rounded-lg shadow border border-emerald-100 max-w-2xl mx-auto">
                     <h2 className="text-xl font-bold text-emerald-700 mb-4">Create Course</h2>

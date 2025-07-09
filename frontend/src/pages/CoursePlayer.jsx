@@ -121,16 +121,7 @@ useEffect(() => {
     }
   };
 
-  const handleVideoTimeUpdate = (e) => {
-    const time = e.target.currentTime;
-    setCurrentTime(time);
-    
-    // Save progress every 30 seconds
-    if (Math.floor(time) % 30 === 0 && currentLesson) {
-      saveProgress(currentLesson.id, time);
-    }
-  };
-
+ 
   const handleVideoLoaded = (e) => {
     setDuration(e.target.duration);
     // Restore saved progress if available
@@ -159,11 +150,12 @@ useEffect(() => {
 
   // Helper to get lesson progress percent
   const getLessonProgress = (lessonId, lessonDuration) => {
-    const prog = progress[lessonId];
-    if (!prog || !lessonDuration) return 0;
-    // watched_duration may be greater than duration if user skips, so cap at 100%
-    return Math.min(100, Math.round((prog.watched_duration / lessonDuration) * 100));
-  };
+  const prog = progress[lessonId];
+  if (!prog || !lessonDuration) return 0;
+  const time = prog.watched_duration ?? prog.current_time ?? 0;
+  return Math.min(100, Math.round((time / lessonDuration) * 100));
+};
+
 
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return null;
@@ -172,6 +164,19 @@ useEffect(() => {
     const videoId = (match && match[2].length === 11) ? match[2] : null;
     return videoId ? `https://www.youtube.com/embed/${videoId}?enablejsapi=1` : null;
   };
+
+  const lastSavedTimeRef = useRef(0);
+
+const handleVideoTimeUpdate = (e) => {
+  const time = Math.floor(e.target.currentTime);
+  setCurrentTime(time);
+
+  if (time !== lastSavedTimeRef.current && time % 30 === 0 && currentLesson) {
+    lastSavedTimeRef.current = time;
+    saveProgress(currentLesson.id, time);
+  }
+};
+
 
   const getVimeoEmbedUrl = (url) => {
     if (!url) return null;
