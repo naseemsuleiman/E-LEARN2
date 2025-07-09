@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Dialog } from '@headlessui/react';
 import { ExclamationCircleIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { useParams } from 'react-router-dom';
 
-const AssignmentList = ({ courseId, showSubmissionForm }) => {
+const AssignmentList = ({  showSubmissionForm }) => {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,7 @@ const AssignmentList = ({ courseId, showSubmissionForm }) => {
   const [success, setSuccess] = useState(false);
   const [showSubmissions, setShowSubmissions] = useState(null);
   const navigate = useNavigate();
+  const { courseId } = useParams();
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [newAssignment, setNewAssignment] = useState({
@@ -252,6 +254,7 @@ const AssignmentList = ({ courseId, showSubmissionForm }) => {
       )}
     </div>
   );
-};
 }
+};
+
 export default AssignmentList;

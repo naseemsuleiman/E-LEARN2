@@ -262,10 +262,12 @@ class Assignment(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="assignments", null=True, blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    due_date = models.DateField()
+    due_date = models.DateTimeField()
+
     max_points = models.IntegerField(default=100)  # type: ignore
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
 
     def __str__(self):
         return f"{self.title} for {self.course.title}"  # type: ignore[attr-defined]

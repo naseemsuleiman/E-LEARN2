@@ -9,7 +9,7 @@ from .views import (
     ModuleListCreateView, ModuleDetailView, LessonListCreateView, LessonDetailView, NotificationListView,
     NotificationCreateView, DiscussionThreadListCreateView, DiscussionPostListCreateView, ProgressListView,
     CertificateListView, LessonAssignmentsView, ProgressView, CourseStudentsView, LoginView, GeminiQuizGenerateView,
-    MessageListCreateView, MessageThreadView, LessonNoteView
+    MessageListCreateView, MessageThreadView, LessonNoteView, CourseAssignmentsView,
 )
 
 urlpatterns = [
@@ -64,7 +64,7 @@ urlpatterns = [
     path('api/lessons/', LessonListCreateView.as_view(), name='lesson-list'),
     path('api/lessons/<int:pk>/', LessonDetailView.as_view(), name='lesson-detail'),
     path('api/lessons/<int:lesson_id>/progress/', views.LessonProgressView.as_view(), name='lesson-progress'),
-    path('api/lessons/<int:lesson_id>/assignments/', LessonAssignmentsView.as_view(), name='lesson-assignments'),
+    path('lessons/<int:lesson_id>/assignments/', LessonAssignmentsView.as_view(), name='lesson-assignments'),
     path('api/lessons/<int:lesson_id>/notes/', LessonNoteView.as_view(), name='lesson-notes'),
     
 
@@ -122,4 +122,10 @@ urlpatterns = [
     
     path('api/messages/', MessageListCreateView.as_view(), name='message-list-create'),
     path('api/messages/<int:user_id>/', MessageThreadView.as_view(), name='message-thread'),
+    
+
+
+    path('courses/<int:course_id>/assignments/', CourseAssignmentsView.as_view(), name='course-assignments'),
+
+
 ]

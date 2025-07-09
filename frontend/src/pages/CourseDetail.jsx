@@ -52,25 +52,28 @@ const CourseDetail = () => {
   ];
 
   useEffect(() => {
-    fetchCourseData();
-    fetchModules();
-    // Check if user is enrolled using backend
-    const checkEnrollment = async () => {
-      if (user && user.role !== 'instructor') {
-        try {
-          const enrolled = await apiService.isEnrolledInCourse(id);
-          setEnrolled(enrolled);
-        } catch (e) {
-          setEnrolled(false);
-        }
-      } else if (user && user.role === 'instructor' && course && course.instructor === user.id) {
-        setEnrolled(true);
-      } else {
+  fetchCourseData();
+  fetchModules();
+}, [id, lessons, progress]);
+
+useEffect(() => {
+  const checkEnrollment = async () => {
+    if (user && user.role !== 'instructor') {
+      try {
+        const enrolled = await apiService.isEnrolledInCourse(id);
+        setEnrolled(enrolled);
+      } catch (e) {
         setEnrolled(false);
       }
-    };
-    checkEnrollment();
-  }, [id, user, course]);
+    } else if (user && user.role === 'instructor' && course && course.instructor === user.id) {
+      setEnrolled(true);
+    } else {
+      setEnrolled(false);
+    }
+  };
+  checkEnrollment();
+}, [user, course, id]);
+
 
   const fetchCourseData = async () => {
     try {
@@ -136,13 +139,14 @@ const CourseDetail = () => {
   };
 
   const getProgressPercentage = () => {
-    if (!lessons.length || !progress.lessons_progress) return 0;
-    const completedLessons = lessons.filter(lesson => {
-      const lp = progress.lessons_progress.find(l => l.lesson_id === lesson.id);
-      return lp && lp.is_completed;
-    }).length;
-    return Math.round((completedLessons / lessons.length) * 100);
-  };
+  if (!lessons.length || !progress.lessons_progress) return 0;
+  const completedLessons = lessons.filter(lesson => {
+    const lp = progress.lessons_progress.find(l => l.lesson_id === lesson.id);
+    return lp && lp.is_completed;
+  }).length;
+  return Math.round((completedLessons / lessons.length) * 100);
+};
+
 
   // Helper to get lesson progress percent from lessons_progress
   const getLessonProgress = (lessonId, lessonDuration) => {
@@ -714,21 +718,24 @@ const CourseDetail = () => {
                 </div>
               )}
 
-              {activeTab === 'assignments' && (
-                <div className="text-center py-12">
-                  <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Assignments</h3>
-                  <p className="text-gray-600 mb-6">
-                    Complete assignments to test your understanding.
-                  </p>
-                  <button
-                    onClick={() => navigate(`/courses/${id}/assignments`)}
-                    className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-                  >
-                    View Assignments
-                  </button>
-                </div>
-              )}
+             {activeTab === 'assignments' && (
+  <div className="text-center py-12">
+    <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+    <h3 className="text-lg font-medium text-gray-900 mb-2">Assignments</h3>
+    <p className="text-gray-600 mb-6">
+      Complete assignments to test your understanding.
+    </p>
+    {user?.role === 'student' && (
+      <button
+        onClick={() => navigate(`/courses/${id}/assignments`)}
+        className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+      >
+        View Assignments
+      </button>
+    )}
+  </div>
+)}
+
 
               {activeTab === 'students' && (
                 <div className="text-center py-12">

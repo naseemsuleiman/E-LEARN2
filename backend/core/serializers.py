@@ -6,6 +6,7 @@ from .models import (
     QuizResponse, LessonProgress, Badge, UserBadge, Payment, CourseRating, 
     Wishlist, LearningPath, LessonNote
 )
+
 from django.contrib.auth import authenticate
 import json
 from .models import Module, LessonProgress
@@ -116,23 +117,23 @@ class CourseCreateSerializer(serializers.ModelSerializer):
 class EnrollmentSerializer(serializers.ModelSerializer):
     course = CourseSerializer(read_only=True)
     student = CustomUserSerializer(read_only=True)
-    
+    progress = serializers.SerializerMethodField()
+
     class Meta:
         model = Enrollment
         fields = '__all__'
         read_only_fields = ['id', 'enrolled_at', 'completed_at', 'last_accessed']
 
+    def get_progress(self, obj):
+        lessons = Lesson.objects.filter(module__course=obj.course)
+        total_lessons = lessons.count()
+        completed_lessons = LessonProgress.objects.filter(
+            student=obj.student,
+            lesson__in=lessons,
+            is_completed=True
+        ).count()
+        return int((completed_lessons / total_lessons) * 100) if total_lessons else 0
 
-class ModuleSerializer(serializers.ModelSerializer):
-    lessons_count = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Module
-        fields = '__all__'
-        read_only_fields = ['id', 'lessons_count']
-    
-    def get_lessons_count(self, obj):
-        return obj.lessons.count()
 
 
 class LessonSerializer(serializers.ModelSerializer):
@@ -157,6 +158,16 @@ class LessonSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class ModuleSerializer(serializers.ModelSerializer):
+    lessons_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Module
+        fields = '__all__'
+        read_only_fields = ['id', 'lessons_count']
+
+    def get_lessons_count(self, obj):
+        return obj.lessons.count()
 
 class LessonProgressSerializer(serializers.ModelSerializer):
     lesson = LessonSerializer(read_only=True)
@@ -213,22 +224,8 @@ class QuizResponseSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class AssignmentSerializer(serializers.ModelSerializer):
-    course = CourseSerializer(read_only=True)
-    lesson = LessonSerializer(read_only=True)
-    submissions_count = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Assignment
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at', 'submissions_count']
-    
-    def get_submissions_count(self, obj):
-        return obj.submissions.count()
-
-
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
-    assignment = AssignmentSerializer(read_only=True)
+    assignment = serializers.PrimaryKeyRelatedField(read_only=True)
     student = CustomUserSerializer(read_only=True)
     graded_by = CustomUserSerializer(read_only=True)
     
@@ -236,6 +233,28 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
         model = AssignmentSubmission
         fields = '__all__'
         read_only_fields = ['id', 'submitted_at', 'graded_at']
+
+
+class AssignmentSerializer(serializers.ModelSerializer):
+    course = serializers.PrimaryKeyRelatedField(
+        queryset=Course.objects.all(), required=False
+    )
+    lesson = serializers.PrimaryKeyRelatedField(
+        queryset=Lesson.objects.all(), required=False
+    )
+    due_date = serializers.DateTimeField()
+
+    submissions_count = serializers.SerializerMethodField(read_only=True)
+    submissions = AssignmentSubmissionSerializer(many=True, read_only=True)
+
+
+    class Meta:
+        model = Assignment
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at', 'submissions_count', 'submissions']
+
+    def get_submissions_count(self, obj):
+        return obj.submissions.count()
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):
