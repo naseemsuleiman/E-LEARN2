@@ -236,17 +236,11 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
 
 
 class AssignmentSerializer(serializers.ModelSerializer):
-    course = serializers.PrimaryKeyRelatedField(
-        queryset=Course.objects.all(), required=False
-    )
-    lesson = serializers.PrimaryKeyRelatedField(
-        queryset=Lesson.objects.all(), required=False
-    )
+    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=False)
+    lesson = serializers.PrimaryKeyRelatedField(queryset=Lesson.objects.all(), required=False)
     due_date = serializers.DateTimeField()
-
     submissions_count = serializers.SerializerMethodField(read_only=True)
     submissions = AssignmentSubmissionSerializer(many=True, read_only=True)
-
 
     class Meta:
         model = Assignment
@@ -255,6 +249,19 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
     def get_submissions_count(self, obj):
         return obj.submissions.count()
+
+    # ✅ Optional: override file URL to make it absolute
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.file and hasattr(instance.file, 'url'):
+            rep['file'] = request.build_absolute_uri(instance.file.url)
+        else:
+            rep['file'] = None
+        return rep
+
+   
+
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):

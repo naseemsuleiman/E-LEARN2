@@ -1,9 +1,19 @@
-# admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import CustomUser, Course, Enrollment
+from .models import (
+    CustomUser,
+    Course,
+    Enrollment,
+    Lesson,
+    
+    Assignment,
+    AssignmentSubmission,
+    Notification,
+  
+)
 
+# Custom user admin
 class CustomUserAdmin(UserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
@@ -25,6 +35,7 @@ class CustomUserAdmin(UserAdmin):
     ordering = ('username',)
     filter_horizontal = ('groups', 'user_permissions',)
 
+# Course admin
 class CourseAdmin(admin.ModelAdmin):
     list_display = ('title', 'instructor', 'created_at', 'enrollment_count')
     list_select_related = ('instructor',)
@@ -38,6 +49,7 @@ class CourseAdmin(admin.ModelAdmin):
         return obj.enrollments.count()
     enrollment_count.short_description = 'Enrollments'
 
+# Enrollment admin
 class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ('student', 'course', 'progress', 'enrolled_at')
     list_select_related = ('student', 'course')
@@ -49,14 +61,61 @@ class EnrollmentAdmin(admin.ModelAdmin):
     list_editable = ('progress',)
 
     fieldsets = (
-        (None, {
-            'fields': ('student', 'course')
-        }),
-        ('Progress', {
-            'fields': ('progress',)
-        }),
+        (None, {'fields': ('student', 'course')}),
+        ('Progress', {'fields': ('progress',)}),
     )
 
+# Lesson admin
+class LessonAdmin(admin.ModelAdmin):
+    list_display = ('title', 'module', 'lesson_type', 'order', 'created_at')
+    list_filter = ('lesson_type', 'module')
+    ordering = ('order',)
+
+
+# Unit admin
+class UnitAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'order')
+    list_filter = ('course',)
+    search_fields = ('title', 'course__title')
+    ordering = ('course', 'order')
+
+# Assignment admin
+class AssignmentAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'due_date', 'created_at')
+    list_filter = ('course',)
+    search_fields = ('title', 'course__title')
+    raw_id_fields = ('course',)
+    date_hierarchy = 'due_date'
+    ordering = ('-due_date',)
+
+# AssignmentSubmission admin
+class AssignmentSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('assignment', 'student', 'submitted_at', 'grade')
+    list_filter = ('assignment', 'student')
+    search_fields = ('assignment__title', 'student__username')
+    raw_id_fields = ('assignment', 'student')
+    ordering = ('-submitted_at',)
+
+# Notification admin
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'notification_type', 'is_read', 'created_at')
+    list_filter = ('notification_type', 'is_read')
+
+# User Progress admin
+class UserProgressAdmin(admin.ModelAdmin):
+    list_display = ('user', 'lesson', 'completed', 'completed_at')
+    list_filter = ('completed',)
+    search_fields = ('user__username', 'lesson__title')
+    ordering = ('-completed_at',)
+
+
+# Register all admins
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Course, CourseAdmin)
 admin.site.register(Enrollment, EnrollmentAdmin)
+
+admin.site.register(Lesson, LessonAdmin)
+admin.site.register(Assignment, AssignmentAdmin)
+admin.site.register(AssignmentSubmission, AssignmentSubmissionAdmin)
+admin.site.register(Notification, NotificationAdmin)
+

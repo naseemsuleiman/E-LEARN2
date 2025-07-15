@@ -40,6 +40,11 @@ const CourseDetail = () => {
   const [enrolling, setEnrolling] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
   const [enrollError, setEnrollError] = useState('');
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
+  const [assignmentsError, setAssignmentsError] = useState('');
+const [assignments, setAssignments] = useState([]);
+
+
 
   const tabs = [
     { key: 'overview', label: 'Overview', icon: BookOpenIcon },
@@ -213,6 +218,35 @@ useEffect(() => {
       console.error('Error refreshing progress:', error);
     }
   };
+
+useEffect(() => {
+  if (activeTab === 'assignments') {
+    setAssignmentsLoading(true);
+    setAssignmentsError("");
+    
+    const fetchStudentAssignments = async () => {
+      try {
+        // Get all enrolled courses first
+        const enrollments = await api.get('/api/enrollments/');
+        const courseIds = enrollments.data.map(e => e.course.id); // 👈 extract ID
+
+        
+        // Then get assignments for these courses
+        const assignmentsRes = await api.get('/api/assignments/', {
+  params: { course__in: courseIds.join(',') }
+});
+
+        setAssignments(assignmentsRes.data);
+      } catch (err) {
+        setAssignmentsError(err.message || 'Failed to fetch assignments');
+      } finally {
+        setAssignmentsLoading(false);
+      }
+    };
+    
+    fetchStudentAssignments();
+  }
+}, [activeTab]);
 
   if (loading) {
     return (
@@ -718,24 +752,46 @@ useEffect(() => {
                 </div>
               )}
 
-             {activeTab === 'assignments' && (
-  <div className="text-center py-12">
-    <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-    <h3 className="text-lg font-medium text-gray-900 mb-2">Assignments</h3>
-    <p className="text-gray-600 mb-6">
-      Complete assignments to test your understanding.
-    </p>
-    {user?.role === 'student' && (
-      <button
-        onClick={() => navigate(`/courses/${id}/assignments`)}
-        className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-      >
-        View Assignments
-      </button>
+           {activeTab === 'assignments' && (
+  <div className="bg-white p-6 rounded-lg shadow border border-emerald-100">
+    <h2 className="text-xl font-bold text-emerald-700 mb-4">Your Assignments</h2>
+    
+    {assignmentsLoading && <div className="text-center py-4">Loading assignments...</div>}
+    {assignmentsError && <div className="text-red-600 mb-4">{assignmentsError}</div>}
+    
+    {assignments.length === 0 ? (
+      <div className="text-center py-8">
+        <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No assignments yet</h3>
+        <p className="text-gray-600 mb-6">
+          Your instructor hasn't posted any assignments for your courses yet.
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {assignments.map(assignment => (
+          <div key={assignment.id} className="border p-4 rounded-lg hover:bg-gray-50">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold text-lg">{assignment.title}</h3>
+                <p className="text-gray-600">{assignment.description}</p>
+                <div className="mt-2 text-sm text-gray-500">
+                  Due: {new Date(assignment.due_date).toLocaleString()}
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(`/courses/${assignment.course.id || assignment.course}/assignments`)}
+                className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+              >
+                View Details
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     )}
   </div>
 )}
-
 
               {activeTab === 'students' && (
                 <div className="text-center py-12">

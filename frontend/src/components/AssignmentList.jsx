@@ -108,15 +108,20 @@ const AssignmentList = ({  showSubmissionForm }) => {
     }
   };
 
+  
+
   if (loading) return <div>Loading assignments...</div>;
   if (!assignments.length) return <div>No assignments found.</div>;
 
   const getDueStatus = (dueDate) => {
-    const now = new Date();
-    const due = new Date(dueDate);
-    const diff = (due - now) / (1000 * 60 * 60 * 24);
-    if (diff < 0) return 'overdue';
-    if (diff < 3) return 'due-soon';
+  const now = new Date();
+  const due = new Date(dueDate);
+  const diff = (due - now) / (1000 * 60 * 60 * 24);
+  if (diff < 0) return 'overdue';
+  if (diff < 3) return 'due-soon';
+  return 'on-track';
+};
+
   return (
     <div className="mb-6">
       {/* Instructor Upload Form */}
@@ -225,9 +230,11 @@ const AssignmentList = ({  showSubmissionForm }) => {
               )}
               {!showSubmissionForm && (
                 <button
+                
                   className="bg-green-600 text-white px-3 py-1 rounded"
                   onClick={() => setShowSubmissions(a.id)}
                 >
+                  
                   View Submissions
                 </button>
               )}
@@ -255,6 +262,5 @@ const AssignmentList = ({  showSubmissionForm }) => {
     </div>
   );
 }
-};
 
 export default AssignmentList;

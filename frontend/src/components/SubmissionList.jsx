@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import apiService, { api } from '../services/api';
+
 
 const SubmissionList = ({ assignmentId }) => {
   const [submissions, setSubmissions] = useState([]);
@@ -10,28 +11,44 @@ const SubmissionList = ({ assignmentId }) => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const fetchSubmissions = async () => {
-      try {
-        const res = await api.get(`/api/assignments/${assignmentId}/submissions/`);
-        setSubmissions(res.data);
-      } catch {
-        setSubmissions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSubmissions();
-  }, [assignmentId]);
+  if (!assignmentId) return;
 
-  const handleGrade = async (e) => {
-    e.preventDefault();
-    if (!selectedSubmission) return;
-    await api.patch(`/submissions/${selectedSubmission}/`, { grade, feedback });
+  const fetchSubmissions = async () => {
+    try {
+      const res = await api.get(`/api/assignments/${assignmentId}/submissions/`);
+      setSubmissions(res.data);
+    } catch (error) {
+      console.error("Error fetching submissions:", error);
+      setSubmissions([]);
+    } finally {
+      setLoading(false); // <-- THIS IS MISSING!
+    }
+  };
+
+  fetchSubmissions();
+}, [assignmentId]);
+
+
+ const handleGrade = async (e) => {
+  e.preventDefault();
+  if (!selectedSubmission) return;
+
+  try {
+    await api.patch(`/api/submissions/${selectedSubmission}/`, { grade, feedback });
     setSuccess(true);
     setGrade('');
     setFeedback('');
+
+    // Optionally re-fetch submissions to reflect the new grade
+    const res = await api.get(`/api/assignments/${assignmentId}/submissions/`);
+    setSubmissions(res.data);
+
     setTimeout(() => setSuccess(false), 2000);
-  };
+  } catch (error) {
+    console.error('Failed to grade submission:', error);
+    alert('Failed to submit grade');
+  }
+};
 
   if (loading) return <div>Loading submissions...</div>;
   if (!submissions.length) return <div>No submissions yet.</div>;
@@ -43,7 +60,8 @@ const SubmissionList = ({ assignmentId }) => {
         {submissions.map((s) => (
           <li key={s.id} className="bg-gray-50 rounded p-2 flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="font-bold">{s.student}</div>
+              <div className="font-bold">{s.student?.username || 'Student'}</div>
+
               <div className="text-gray-600">Submitted: {new Date(s.submitted_at).toLocaleString()}</div>
               <div className="text-gray-700">{s.text}</div>
               {s.file && <a href={s.file} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">Download File</a>}

@@ -125,7 +125,7 @@ urlpatterns = [
     
 
 
-    path('courses/<int:course_id>/assignments/', CourseAssignmentsView.as_view(), name='course-assignments'),
+    path('api/courses/<int:course_id>/assignments/', CourseAssignmentsView.as_view(), name='course-assignments'),
 
 
 ]

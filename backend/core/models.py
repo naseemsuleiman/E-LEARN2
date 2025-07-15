@@ -267,6 +267,7 @@ class Assignment(models.Model):
     max_points = models.IntegerField(default=100)  # type: ignore
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    file = models.FileField(upload_to='assignments/', null=True, blank=True)
     
 
     def __str__(self):

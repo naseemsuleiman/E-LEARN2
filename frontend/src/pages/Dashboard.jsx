@@ -484,7 +484,8 @@ function Dashboard() {
           formData.append("course", assignmentForm.course); // ✅ Add this
 
           if (assignmentForm.file) {
-            formData.append("file_submission", assignmentForm.file);
+            
+            formData.append("file", assignmentForm.file); 
           }
 
           const response = await api.post("/api/assignments/", formData, {
@@ -563,15 +564,16 @@ function Dashboard() {
           <span className="text-sm text-gray-500">
             Due: {a.due_date ? new Date(a.due_date).toLocaleString() : 'N/A'}
           </span>
-          {a.file_submission && (
-            <a
-              href={a.file_submission}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline text-sm"
-            >
-              📄 View Uploaded File
-            </a>
+         {a.file && (
+  <a
+    href={a.file}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-600 underline text-sm"
+  >
+    📄 View Uploaded File
+  </a>
+
           )}
         </li>
       ))}

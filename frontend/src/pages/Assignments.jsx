@@ -146,6 +146,23 @@ export default function Assignments() {
                       </h3>
                       <p className="text-gray-600 mb-3">{assignment.description}</p>
                       
+
+                     {assignment.file && (
+  <div className="mt-2">
+    <a
+      href={assignment.file}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center text-purple-600 hover:underline"
+    >
+      <EyeIcon className="h-4 w-4 mr-1" />
+      View Attached File
+    </a>
+  </div>
+)}
+
+
+
                       <div className="flex items-center space-x-6 text-sm text-gray-500 mb-4">
                         <div className="flex items-center">
                           <ClockIcon className="h-4 w-4 mr-1" />

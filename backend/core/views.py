@@ -6,7 +6,11 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import generics
+from django_filters import rest_framework as filters
+from .models import Assignment
 from django.contrib.auth import authenticate, get_user_model
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import MultiPartParser, FormParser  
 from .models import (
     Course, Enrollment, CustomUser, Message, Assignment, AssignmentSubmission, Announcement, 
     Module, Lesson, Notification, DiscussionThread, DiscussionPost, Progress, Certificate,
@@ -198,6 +202,9 @@ class CourseCreateView(generics.CreateAPIView):
     serializer_class = CourseCreateSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
+
+
+    
 
 
 class EnrollmentView(APIView):
@@ -418,31 +425,81 @@ class CourseAssignmentsView(generics.ListAPIView):
     def get_queryset(self):
         course_id = self.kwargs.get('course_id')
         user = self.request.user
-        from .models import Assignment  # If not already imported
-
+        
         if getattr(user, 'role', None) == 'instructor':
-            return Assignment.objects.filter(course__id=course_id, course__instructor=user)
+            return Assignment.objects.filter(course_id=course_id, course__instructor=user)
         elif getattr(user, 'role', None) == 'student':
-            is_enrolled = Enrollment.objects.filter(course_id=course_id, student=user).exists()
+            # Check if student is enrolled in the course
+            is_enrolled = Enrollment.objects.filter(
+                course_id=course_id, 
+                student=user
+            ).exists()
             if is_enrolled:
-                return Assignment.objects.filter(course__id=course_id)
+                return Assignment.objects.filter(course_id=course_id)
         return Assignment.objects.none()
 
+    def list(self, request, *args, **kwargs):
+       queryset = self.get_queryset()
+       serializer = self.get_serializer(queryset, many=True, context={'request': request})
+       return Response(serializer.data)
 
 # Assignment Views
 class AssignmentListCreateView(generics.ListCreateAPIView):
-    queryset = Assignment.objects.all()  # type: ignore[attr-defined]
     serializer_class = AssignmentSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser] 
+
+    def get_queryset(self):
+
+
+        print("👉 User:", self.request.user)
+        print("👉 Role:", getattr(self.request.user, 'role', None))
+        print("👉 course__in:", self.request.query_params.get('course__in'))
+        queryset = Assignment.objects.all()
+        
+        # Parse course__in from query params
+        course_ids_param = self.request.query_params.get('course__in', None)
+        if course_ids_param:
+            requested_course_ids = course_ids_param.split(',')
+            queryset = queryset.filter(course_id__in=requested_course_ids)
+
+        user = self.request.user
+
+        if getattr(user, 'role', None) == 'instructor':
+            return queryset.filter(course__instructor=user)
+
+        elif getattr(user, 'role', None) == 'student':
+            enrolled_courses = Enrollment.objects.filter(student=user).values_list('course_id', flat=True)
+            
+            # Intersect with course__in if provided
+            return queryset.filter(course_id__in=enrolled_courses)
+
+        return queryset.none()
 
     def perform_create(self, serializer):
-        assignment = serializer.save()
-        # Notify all students enrolled in the course
+        course = serializer.validated_data['course']
+        if course.instructor != self.request.user:
+            raise PermissionDenied("You can only create assignments for your own courses")
+        
+        assignment = serializer.save()  # ✅ Save with file included if in request.FILES
+
+        # ✅ Notify enrolled students
         enrollments = Enrollment.objects.filter(course=assignment.course)
         message = f"New assignment: {assignment.title} has been posted."
         for enrollment in enrollments:
-            Notification.objects.create(user=enrollment.student, message=message)  # type: ignore[attr-defined]
+            Notification.objects.create(
+                user=enrollment.student,
+                title="New Assignment Posted",
+                message=message,
+                notification_type='assignment'
+            )
+class AssignmentFilter(filters.FilterSet):
+    course__in = filters.BaseInFilter(field_name='course', lookup_expr='in')
 
+    class Meta:
+        model = Assignment
+        fields = ['course__in']
+    
 class AssignmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Assignment.objects.all()  # type: ignore[attr-defined]
     serializer_class = AssignmentSerializer
